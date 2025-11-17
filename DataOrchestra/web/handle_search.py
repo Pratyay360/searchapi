@@ -2,13 +2,13 @@ from ddgs import DDGS
 import os
 import shutil
 import subprocess
-   
+
 
 def clone_repo(repo_url: str, clone_dir: str = "repo_clone"):
     if os.path.exists(clone_dir):
         shutil.rmtree(clone_dir)
     subprocess.run(["git", "clone", "--depth", "1",
-                       repo_url, clone_dir], check=True)
+                    repo_url, clone_dir], check=True)
     return clone_dir
 
 
@@ -45,5 +45,4 @@ def search_repos(param: str):
     gitlab_results = search_gitlab(param)
     res = github_results + gitlab_results
     return res
-
 

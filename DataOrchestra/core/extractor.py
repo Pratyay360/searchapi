@@ -1,16 +1,40 @@
+import to_txt
+from docx import Document
+import unicodedata
 import os
 import re
-import unicodedata
+import shutil
+import subprocess
 from pathlib import Path
-from docx import Document
-import to_txt
 
 
-def normalize_unicode(text: str):
+
+def _md_to_txt(src_dir: str, dest_dir: str):
+    src_path = Path(src_dir)
+    dest_path = Path(dest_dir)
+    if dest_path.exists():
+        shutil.rmtree(dest_path)
+    dest_path.mkdir(parents=True, exist_ok=True)
+    for md_file in src_path.rglob("*.md"):
+        txt_file = dest_path / (md_file.stem + ".txt")
+        counter = 1
+        while txt_file.exists():
+            txt_file = dest_path / f"{md_file.stem}_{counter}.txt"
+            counter += 1
+
+        with (
+            open(md_file, "r", encoding="utf-8") as f_in,
+            open(txt_file, "w", encoding="utf-8") as f_out,
+        ):
+            f_out.write(f_in.read())
+        print(f"Saved: {txt_file}")
+
+
+def _normalize_unicode(text: str):
     return unicodedata.normalize("NFKC", text)
 
 
-def remove_urls_and_emails(text: str):
+def _remove_urls_and_emails(text: str):
     text = re.sub(r"https?://\S+", "", text)
     text = re.sub(r"ftp://\S+", "", text)
     text = re.sub(r"www\.\S+", "", text)
@@ -24,45 +48,32 @@ def remove_urls_and_emails(text: str):
 def remove_noise(text: str):
     text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\t", " ")
     text = re.sub(r"[\x00-\x1F\x7F-\x9F]", " ", text)
-    text = remove_urls_and_emails(text)
+    text = _remove_urls_and_emails(text)
     text = re.sub(r"\b\d+\b", " ", text)
     text = re.sub(r"([!?.,])\1+", r"\1", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
 
-def filter_meaningful_words(text: str, min_word_length: int = 2):
+def _filter_meaningful_words(text):
     words = text.split()
-    noise_words = {
-        "http",
-        "https",
-        "www",
-        "com",
-        "org",
-        "contact",
-        "follow",
-    }
 
     for word in words:
         word_lower = word.lower()
-        # Remove noise words
-        if word_lower in noise_words:
-            continue
-
         if re.match(r"^\d+$", word):  # Pure numbers
             continue
-        if re.match(r"^\w*\d\w*$", word) and len(word) <= 4:  # Mixed short alphanumeric
+        if re.match(r"^\w*\d\w*$", word) and len(word) <= 4:  
             continue
 
         if re.search(r"(.)\1{2,}", word):
             continue
 
     return " ".join(
-        [word for word in words if len(word) >= min_word_length]
+        [word for word in words if len(word) > 1]
     )
 
 
-def remove_repeated_phrases(text: str):
+def _remove_repeated_phrases(text: str):
     sentences = re.split(r"[.!?]+", text)
     unique_sentences = []
     seen_sentences = set()
@@ -71,7 +82,7 @@ def remove_repeated_phrases(text: str):
         clean_sentence = sentence.strip().lower()
         if (
             clean_sentence
-            and len(clean_sentence) > 10  # Only check substantial sentences
+            and len(clean_sentence) > 10 
             and clean_sentence not in seen_sentences
         ):
             seen_sentences.add(clean_sentence)
@@ -82,22 +93,21 @@ def remove_repeated_phrases(text: str):
     return result
 
 
-def get_word_count(text: str):
+def _get_word_count(text: str):
     words = text.split()
     return len(words)
 
 
-def clean_text(text: str):
-    text = normalize_unicode(text)
-    text = remove_noise(text)
-    text = filter_meaningful_words(text)
-    text = remove_repeated_phrases(text)
+def _clean_text(text: str):
+    text = _normalize_unicode(text)
+    text = _filter_meaningful_words(text)
+    text = _remove_repeated_phrases(text)
     text = text.lower()
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
-def clean_file(file_path: Path):
+def _clean_file(file_path: Path):
     try:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -112,34 +122,7 @@ def clean_file(file_path: Path):
         print(f"Skipping {file_path.name}: original content too short")
         return
 
-    original_text = text
-    cleaned_text = clean_text(text)
-
-    if len(cleaned_text.strip()) > 20:
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(cleaned_text)
-        final_word_count = get_word_count(cleaned_text)
-        final_size_kb = file_path.stat().st_size / 1024
-        original_size = len(original_text.encode("utf-8")) / 1024
-        reduction = (
-            ((original_size - final_size_kb) / original_size * 100)
-            if original_size > 0
-            else 0
-        )
-        if final_word_count < 10:
-            print(
-                f"Warning: {file_path.name} became very small after cleaning (words: {final_word_count}, size: {final_size_kb:.2f}KB)"
-            )
-        else:
-            print(
-                f"Cleaned: {file_path.name} (words: {final_word_count}, size: {final_size_kb:.2f}KB, reduced by {reduction:.1f}%)"
-            )
-    else:
-        print(
-            f"Warning: {file_path.name} has no meaningful content after cleaning")
-
-
-def token_generator(file_path):
+def _token_generator(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
             words = line.strip().split()
@@ -148,7 +131,7 @@ def token_generator(file_path):
             yield '\n'
 
 
-def split_txt_by_tokens_generator(token_limit=5000, input_dir='llmdataset'):
+def _split_txt_by_tokens_generator(token_limit=5000, input_dir="dataset"):
     input_path = Path(input_dir)
     if not input_path.exists():
         print(f"❌ Directory '{input_dir}' not found!")
@@ -161,7 +144,7 @@ def split_txt_by_tokens_generator(token_limit=5000, input_dir='llmdataset'):
         part_num = 1
         output_path = Path(f"{base_name}_{part_num:03d}.txt")
         out_f = open(output_path, 'w', encoding='utf-8')
-        for token in token_generator(file):
+        for token in _token_generator(file):
             if token == '\n':
                 out_f.write('\n')
             else:
@@ -175,18 +158,17 @@ def split_txt_by_tokens_generator(token_limit=5000, input_dir='llmdataset'):
                     token_count = 0
                     output_path = Path(f"{base_name}_{part_num:03d}.txt")
                     out_f = open(output_path, 'w', encoding='utf-8')
-
         out_f.close()
         print(f"✅ Split completed for {file} -> {part_num} parts")
 
 
-def document_to_text(docx_path: str, txt_output_path: str):
+def _document_to_text(docx_path, txt_output_path):
     doc = Document(docx_path)
     with open(txt_output_path, "w", encoding="utf-8") as f:
         for para in doc.paragraphs:
             f.write(para.text + "\n")
 
-def pdf_to_text(pdf_path: str, txt_output_path: str):
+def _pdf_to_text(pdf_path, txt_output_path):
     to_txt.process_pdf(pdf_path)
     ocr_txt_path = Path(pdf_path).with_suffix('.txt')
     if ocr_txt_path.exists():
@@ -194,7 +176,8 @@ def pdf_to_text(pdf_path: str, txt_output_path: str):
     else:
         raise FileNotFoundError(f"OCR text file not found for {pdf_path}")
 
-def datanowmalization(directory: str = "."):
+
+def _datanowmalization(directory):
     output_dir = Path(directory)
     if not output_dir.exists():
         print(f"Directory '{output_dir}' not found.")
@@ -217,10 +200,10 @@ def datanowmalization(directory: str = "."):
     print(f"- {files_processed} files cleaned")
 
 
-def datarationization(directory: str = "."):
+def datarationization(directory):
     output_dir = Path(directory)
     if not output_dir.exists():
         print(f"Directory '{output_dir}' not found.")
         return
-    datanowmalization("llmdataset")
-    split_txt_by_tokens_generator(token_limit=5000, input_dir="llmdataset")
+    _datanowmalization("dataset")
+    _split_txt_by_tokens_generator(token_limit=5000, input_dir="dataset")

@@ -1,24 +1,51 @@
 """
-DataOrchestra - A toolkit for cleaning and preparing text datasets for LLM training and finetuning ,
-This module provides utilities for:
+DataOrchestra - A comprehensive data processing and extraction toolkit.
+
+This package provides tools for:
+- Web scraping and crawling
+- Document processing (PDF, DOCX, etc.)
 - Text cleaning and normalization
-- fetching content from various sources
-- crawling web pages
-- extracting text from files
-- Filtering meaningful content
-- Processing files in bulk
+- Data extraction and transformation
 """
 
-from .cleaner import (  
-    normalize_unicode,
-    remove_urls_and_emails,
-    remove_noise,
-    filter_meaningful_words,
-    remove_repeated_phrases,
-    get_word_count,
+from .core import (
+    BaseProcessor,
+    FileProcessor,
+    ProcessResult,
+    FileProcessingResult,
+    get_config,
+    set_config,
+    reset_config,
+)
+from .extract import (
+    process_pdf,
+    process_docx,
+    process_web,
+)
+from .utils import (
     clean_text,
-    clean_file,
-    process_directory,
+    normalize_text,
+    split_text_by_tokens,
+)
+from .web import (
+    
 )
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
+__all__ = [
+    "BaseProcessor",
+    "FileProcessor",
+    "ProcessResult",
+    "FileProcessingResult",
+    "get_config",
+    "set_config",
+    "reset_config",
+    "process_pdf",
+    "process_docx",
+    "process_web",
+    "clean_text",
+    "normalize_text",
+    "split_text_by_tokens",
+    "fetch_url",
+    "crawl_website",
+]

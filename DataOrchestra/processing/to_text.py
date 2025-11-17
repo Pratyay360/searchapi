@@ -4,38 +4,6 @@ import subprocess
 import shutil
 from pathlib import Path
 
-
-def clone_repo(repo_url: str, clone_dir: str = "repo_clone"):
-    if os.path.exists(clone_dir):
-        shutil.rmtree(clone_dir)
-    subprocess.run(["git", "clone", "--depth", "1",
-                   repo_url, clone_dir], check=True)
-    return clone_dir
-
-
-def convert_md_to_txt(src_dir: str = "repo_clone", dest_dir: str = "md_as_txt"):
-    src_path = Path(src_dir)
-    dest_path = Path(dest_dir)
-    if dest_path.exists():
-        shutil.rmtree(dest_path)
-    dest_path.mkdir(parents=True, exist_ok=True)
-
-    for md_file in src_path.rglob("*.md"):
-        txt_file = dest_path / (md_file.stem + ".txt")
-        counter = 1
-        while txt_file.exists():
-            txt_file = dest_path / f"{md_file.stem}_{counter}.txt"
-            counter += 1
-
-        with (
-            open(md_file, "r", encoding="utf-8") as f_in,
-            open(txt_file, "w", encoding="utf-8") as f_out,
-        ):
-            f_out.write(f_in.read())
-
-        print(f"Saved: {txt_file}")
-
-
 def _check_ocrmypdf():
     if shutil.which("ocrmypdf") is None:
         print("ERROR: 'ocrmypdf' is not installed.")
@@ -89,4 +57,3 @@ def process_pdf(input_file):
         print(
             f"❌ ERROR: Exception occurred while processing '{input_file}': {e}")
         return False
-
