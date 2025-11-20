@@ -1,7 +1,3 @@
-"""
-Web crawling and searching functionality.
-"""
-
 from .spider import WebSpider, crawl_website
 from .handle_search import (
     clone_repo,
