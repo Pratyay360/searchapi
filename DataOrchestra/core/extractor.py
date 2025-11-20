@@ -1,12 +1,12 @@
-import to_txt
-from docx import Document
-import unicodedata
 import os
 import re
 import shutil
 import subprocess
+import unicodedata
 from pathlib import Path
 
+import pdf_to_text as to_txt
+from docx import Document
 
 
 def _md_to_txt(src_dir: str, dest_dir: str):
@@ -38,8 +38,7 @@ def _remove_urls_and_emails(text: str):
     text = re.sub(r"https?://\S+", "", text)
     text = re.sub(r"ftp://\S+", "", text)
     text = re.sub(r"www\.\S+", "", text)
-    text = re.sub(
-        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "", text)
+    text = re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "", text)
     text = re.sub(r"\S+\.(com|org|net|edu|gov|io|co|uk)\S*", "", text)
     text = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "", text)
     return text
@@ -59,18 +58,15 @@ def _filter_meaningful_words(text):
     words = text.split()
 
     for word in words:
-        word_lower = word.lower()
+        word = word.lower()
         if re.match(r"^\d+$", word):  # Pure numbers
             continue
-        if re.match(r"^\w*\d\w*$", word) and len(word) <= 4:  
+        if re.match(r"^\w*\d\w*$", word) and len(word) <= 4:
             continue
-
         if re.search(r"(.)\1{2,}", word):
             continue
 
-    return " ".join(
-        [word for word in words if len(word) > 1]
-    )
+    return " ".join([word for word in words if len(word) > 1])
 
 
 def _remove_repeated_phrases(text: str):
@@ -82,13 +78,13 @@ def _remove_repeated_phrases(text: str):
         clean_sentence = sentence.strip().lower()
         if (
             clean_sentence
-            and len(clean_sentence) > 10 
+            and len(clean_sentence) > 10
             and clean_sentence not in seen_sentences
         ):
             seen_sentences.add(clean_sentence)
             unique_sentences.append(sentence.strip())
     result = ". ".join(unique_sentences).strip()
-    if result and not result[-1] in ".!?":
+    if result and result[-1] in ".!?":
         result += "."
     return result
 
@@ -122,13 +118,14 @@ def _clean_file(file_path: Path):
         print(f"Skipping {file_path.name}: original content too short")
         return
 
+
 def _token_generator(file_path):
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             words = line.strip().split()
             for word in words:
                 yield word
-            yield '\n'
+            yield "\n"
 
 
 def _split_txt_by_tokens_generator(token_limit=5000, input_dir="dataset"):
@@ -137,27 +134,27 @@ def _split_txt_by_tokens_generator(token_limit=5000, input_dir="dataset"):
         print(f"❌ Directory '{input_dir}' not found!")
         return
     os.chdir(input_path)
-    for file in Path('.').glob('*.txt'):
+    for file in Path(".").glob("*.txt"):
         print(f"Processing {file}...")
         base_name = file.stem
         token_count = 0
         part_num = 1
         output_path = Path(f"{base_name}_{part_num:03d}.txt")
-        out_f = open(output_path, 'w', encoding='utf-8')
+        out_f = open(output_path, "w", encoding="utf-8")
         for token in _token_generator(file):
-            if token == '\n':
-                out_f.write('\n')
+            if token == "\n":
+                out_f.write("\n")
             else:
-                out_f.write(token + ' ')
+                out_f.write(token + " ")
                 token_count += 1
 
                 if token_count >= token_limit:
-                    out_f.write('\n')
+                    out_f.write("\n")
                     out_f.close()
                     part_num += 1
                     token_count = 0
                     output_path = Path(f"{base_name}_{part_num:03d}.txt")
-                    out_f = open(output_path, 'w', encoding='utf-8')
+                    out_f = open(output_path, "w", encoding="utf-8")
         out_f.close()
         print(f"✅ Split completed for {file} -> {part_num} parts")
 
@@ -168,9 +165,10 @@ def _document_to_text(docx_path, txt_output_path):
         for para in doc.paragraphs:
             f.write(para.text + "\n")
 
+
 def _pdf_to_text(pdf_path, txt_output_path):
     to_txt.process_pdf(pdf_path)
-    ocr_txt_path = Path(pdf_path).with_suffix('.txt')
+    ocr_txt_path = Path(pdf_path).with_suffix(".txt")
     if ocr_txt_path.exists():
         ocr_txt_path.rename(txt_output_path)
     else:
@@ -185,14 +183,23 @@ def _datanowmalization(directory):
     files_processed = 0
     print("Starting file cleaning and filtering...")
     for file_path in output_dir.iterdir():
-        if file_path.is_file() and file_path.suffix in {".txt", ".json", ".md", ".csv", ".docx", ".odt", ".doc", ".html"}:
+        if file_path.is_file() and file_path.suffix in {
+            ".txt",
+            ".json",
+            ".md",
+            ".csv",
+            ".docx",
+            ".odt",
+            ".doc",
+            ".html",
+        }:
             try:
                 if file_path.suffix in {".docx", ".odt", ".doc"}:
                     txt_output_path = file_path.with_suffix(".txt")
-                    document_to_text(str(file_path), str(txt_output_path))
-                    clean_file(txt_output_path)
+                    _document_to_text(str(file_path), str(txt_output_path))
+                    _clean_file(txt_output_path)
                 else:
-                    clean_file(file_path)
+                    _clean_file(file_path)
                 files_processed += 1
             except Exception as e:
                 print(f"Failed on {file_path.name}: {e}")

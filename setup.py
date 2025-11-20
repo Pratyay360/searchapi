@@ -28,9 +28,9 @@ setup(
     description="A toolkit for cleaning and preparing text datasets for LLM training and finetuning",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/your-username/DataOrchestra",
+    url="https://github.com/Pratyay360/DataOrchestra",
     project_urls={
-        "Bug Tracker": "https://github.com/your-username/DataOrchestra/issues",
+        "Bug Tracker": "https://github.com/Pratyay360/DataOrchestra/issues",
     },
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -38,13 +38,13 @@ setup(
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Text Processing :: General",
     ],
     package_dir={"": "."},
     packages=find_packages(where=".", include=["DataOrchestra*"]),
-    python_requires=">=3.14",
+    python_requires=">=3.9",
     install_requires=requirements,
 )
