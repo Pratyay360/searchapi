@@ -27,9 +27,6 @@ from .utils import (
     normalize_text,
     split_text_by_tokens,
 )
-from .web import (
-    
-)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -46,5 +43,4 @@ __all__ = [
     "clean_text",
     "normalize_text",
     "split_text_by_tokens",
-    
 ]

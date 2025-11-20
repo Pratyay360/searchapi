@@ -15,6 +15,7 @@ from docx import Document
 
 from .base import FileProcessingResult, FileProcessor
 from .config import ProcessingConfig, get_config
+from .exceptions import FileProcessingError
 from .logging_utils import LogContext, get_logger
 
 

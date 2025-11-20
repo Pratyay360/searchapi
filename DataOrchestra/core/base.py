@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Generic, Optional, TypeVar
 
+from .exceptions import FileProcessingError
 from .logging_utils import get_logger
 
 T = TypeVar("T")
