@@ -1,21 +1,20 @@
-
 name: Build and Push image 
 
 permissions:
   contents: read
   packages: write
-  id-token: write
 
 on:
   push:
-    branches: [ main ]  # change this as per your branch name
+    branches: [ main ]
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Build and Push to GHCR(git2ghcr)
-        uses: Pratyay360/git2ghcr@v1
+      - uses: pratyay360/git2ghcr@v1
         with:
-          context: .  # location of the Dockerfile
           image: ghcr.io/${{ github.repository }}
           tags: latest
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
