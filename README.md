@@ -2,6 +2,20 @@
 
 This project provides a lightweight, deployable web interface for performing internet searches using the [DDGS](https://github.com/deedy5/ddgs) library. It exposes multiple structured endpoints through a FastAPI backend, enabling flexible and programmatic access to general, PDF, repository, and Wikipedia searches.
 
+# Deployment
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FPratyay360%2Fsearch-api)
+
+# Installation guide
+
+```
+
+podman-compose up -d             #to start the service
+podman-compose logs -f           #to view logs
+podman-compose down              #to stop the service
+
+```
+
 ### Don't Forget to Star this repo :)
 
 ---
@@ -58,16 +72,6 @@ To avoid getting rate limited:
 
 - Use proxies, VPNs, or Tor as a routing layer.
 - When invoking the API repeatedly, apply a **politeness delay** to avoid overloading upstream engines.
-
-# Installation guide
-
-```
-
-podman-compose up -d             #to start the service
-podman-compose logs -f           #to view logs
-podman-compose down              #to stop the service
-
-```
 
 # Disclaimer
 
