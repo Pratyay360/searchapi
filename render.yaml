@@ -1,0 +1,12 @@
+# Exported from Render on 2025-11-23T13:59:23Z
+version: "1"
+services:
+- type: web
+  name: search-api
+  runtime: docker
+  repo: https://github.com/Pratyay360/search-api
+  plan: free
+  region: oregon
+  dockerContext: .
+  dockerfilePath: ./Dockerfile
+  autoDeployTrigger: commit
