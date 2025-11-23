@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Build and Push to GHCR(git2ghcr)
-        uses: Pratyay360/git2ghcr@v1
+        uses: Pratyay360/git2ghcr@v2
         with:
           image: ghcr.io/${{ github.repository }}
           tags: latest
