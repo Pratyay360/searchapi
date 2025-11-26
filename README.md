@@ -6,9 +6,8 @@ This project provides a lightweight, deployable web interface for performing int
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FPratyay360%2Fsearch-api)
 
-[![check docker hub][](https://hub.docker.com/r/pratyay360/searchapi)]
 
-<img width="512" height="121" alt="image" src="https://github.com/user-attachments/assets/47b22768-090e-4a65-82d4-eed3edb92644" />(https://hub.docker.com/r/pratyay360/searchapi)
+<img width="512" height="121" alt="image" src="https://github.com/user-attachments/assets/47b22768-090e-4a65-82d4-eed3edb92644" href="https://hub.docker.com/r/pratyay360/searchapi" />
 
 
 # Installation guide
