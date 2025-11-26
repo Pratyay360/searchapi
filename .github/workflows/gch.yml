@@ -40,7 +40,7 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
-            docker.io/${{ secrets.DOCKER_USERNAME }}/${{ github.repository }}
+            docker.io/${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}
           tags: latest
 
       - name: Build and push Docker image
