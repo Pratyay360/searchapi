@@ -11,9 +11,6 @@ COPY pyproject.toml uv.lock ./
 
 RUN pip install --no-cache-dir uv \
     && uv pip install --system -r pyproject.toml
-=======
-RUN uv sync
->>>>>>> Stashed changes
 
 COPY . .
 

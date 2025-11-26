@@ -1,11 +1,10 @@
-version: '1'
+version: "1"
 services:
   - type: web
     name: search-api
     runtime: docker
     repo: https://github.com/Pratyay360/search-api
     plan: free
-    region: oregon
     dockerContext: .
     dockerfilePath: ./Dockerfile
     autoDeployTrigger: commit

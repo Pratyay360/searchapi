@@ -2,7 +2,7 @@ import asyncio
 import time
 from random import shuffle
 from typing import List, Optional
-
+import requests
 import urllib3
 from crossref.restful import Works
 from ddgs import DDGS

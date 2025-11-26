@@ -24,12 +24,8 @@ build
 uv.lock.bak
 uv.lock.backup
 uv.lock.old
-<<<<<<< Updated upstream
-uv.lock.tmp
-=======
 uv.lock.tmp
 .*
 !.dockerignore
 LICENSE
 README.md
->>>>>>> Stashed changes
