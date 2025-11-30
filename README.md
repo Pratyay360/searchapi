@@ -147,7 +147,7 @@ Returns a list of news articles related to the specified query.
 
 To avoid getting rate limited:
 
-- Use proxies, VPNs, or Tor as a routing layer (not the browser). [for proxying with tor yu can use use](https://flathub.org/en/apps/io.frama.tractor.carburetor)
+- Use proxies, VPNs, or Tor as a routing layer (not the browser). [for proxying with tor you can use use](https://flathub.org/en/apps/io.frama.tractor.carburetor)
 - When invoking the API repeatedly, apply a **politeness delay** to avoid overloading upstream engines.
 
 # Disclaimer
