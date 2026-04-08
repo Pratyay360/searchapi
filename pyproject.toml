@@ -41,6 +41,7 @@ dependencies = [
     "idna==3.11",
     "jinja2==3.1.6",
     "lxml==6.0.2",
+    "mcp>=1.23.0",
     "markdown-it-py==4.0.0",
     "markupsafe==3.0.3",
     "mdurl==0.1.2",
@@ -78,7 +79,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["searchweb", "main"]
+py-modules = ["searchweb", "main", "mcp_server"]
 
 [tool.setuptools.package-dir]
 "" = "."

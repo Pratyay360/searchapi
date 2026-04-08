@@ -2,6 +2,8 @@
 
 This project provides a lightweight, deployable web interface for performing internet searches using the [DDGS](https://github.com/deedy5/ddgs) library. It exposes multiple structured endpoints through a FastAPI backend, enabling flexible and programmatic access to general, PDF, repository, and Wikipedia searches.
 
+It also ships as an **MCP (Model Context Protocol) server**, allowing AI assistants (Claude, Cursor, GitHub Copilot, etc.) to call the search tools directly.
+
 # Deployment
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FPratyay360%2Fsearch-api)
@@ -28,6 +30,42 @@ For generating dataset for training/finetuning llms a huge number of dataset is 
 ### Framework
 
 - Built with **FastAPI**, offering a clean and performant API layer.
+- Also available as an **MCP server** via the `mcp` Python SDK.
+
+## MCP Server
+
+Run the MCP server over stdio (default) for use with Claude Desktop, Cursor, VS Code Copilot and other MCP-compatible clients:
+
+```bash
+python mcp_server.py
+```
+
+### Available MCP tools
+
+| Tool | Description |
+|---|---|
+| `web_search` | General web search, returns a list of URLs |
+| `search_by_engine` | Search via a specific engine (`bing`, `brave`, `duckduckgo`, `google`, `mojeek`, `yandex`, `yahoo`, `wikipedia`) |
+| `search_papers` | Search academic papers, returns DOIs |
+| `search_books` | Search for books, returns URLs |
+| `search_news` | Search news articles, returns URLs |
+| `search_pdfs` | Search for PDF documents, returns URLs |
+| `search_filetype` | Search for files of a given type (pdf, docx, pptx …) |
+| `search_repositories` | Search GitHub & GitLab repositories, returns URLs |
+| `search_wiki` | Search Wikipedia and Wikimedia sites, returns URLs |
+
+### Claude Desktop configuration example
+
+```json
+{
+  "mcpServers": {
+    "searchapi": {
+      "command": "python",
+      "args": ["/path/to/searchapi/mcp_server.py"]
+    }
+  }
+}
+```
 
 ### Why?
 
