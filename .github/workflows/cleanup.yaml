@@ -1,86 +1,36 @@
-# on:
-#   workflow_dispatch:
-
-# permissions:
-#   actions: write
-#   contents: write
-
-# jobs:
-#   cleanup:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Install GitHub CLI
-#         run: sudo apt-get install gh jq -y
-#       - name: Delete old workflow runs
-#         env:
-#           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#         run: |
-#           owner="${{ github.repository_owner }}"
-#           repo="${{ github.event.repository.name }}"
-
-#           echo "Fetching workflow runs for $owner/$repo..."
-
-#           runs=$(gh api /repos/$owner/$repo/actions/runs | jq -r '.workflow_runs[].id')
-
-#           if [ -z "$runs" ]; then
-#             echo "No workflow runs found."
-#             exit 0
-#           fi
-
-#           for id in $runs; do
-#             echo "Deleting workflow run ID $id"
-#             gh api -X DELETE /repos/$owner/$repo/actions/runs/$id
-#           done
-
-#           echo "All failed workflow runs deleted."
-
-
-name: Cleanup Workflow Runs
 on:
   workflow_dispatch:
-  
+
 permissions:
   actions: write
-  contents: read
+  contents: write
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh jq -y
+
       - name: Delete old workflow runs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           owner="${{ github.repository_owner }}"
           repo="${{ github.event.repository.name }}"
-          current_run="${{ github.run_id }}"
 
-          echo "Fetching workflow list for $owner/$repo..."
+          echo "Fetching workflow runs for $owner/$repo..."
 
-          # Iterate over each workflow to handle keep-per-workflow correctly
-          gh api /repos/$owner/$repo/actions/workflows --paginate \
-            | jq -r '.workflows[].id' \
-            | while read -r workflow_id; do
+          runs=$(gh api /repos/$owner/$repo/actions/runs | jq -r '.workflow_runs[].id')
 
-            echo "Processing workflow ID: $workflow_id"
+          if [ -z "$runs" ]; then
+            echo "No workflow runs found."
+            exit 0
+          fi
 
-            # Build status filter flag
-            status_flag=""
-            [ "$status" != "all" ] && status_flag="&status=$status"
-
-            # Fetch all runs for this workflow, skip current run, skip first N (keep)
-            gh api "/repos/$owner/$repo/actions/runs?workflow_id=$workflow_id&per_page=100${status_flag}" \
-              --paginate \
-              | jq -r '.workflow_runs[].id' \
-              | grep -v "^$current_run$" \
-              | while read -r run_id; do
-                echo "Deleting run $run_id"
-                gh api -X DELETE /repos/$owner/$repo/actions/runs/$run_id \
-                  && echo "Deleted $run_id" \
-                  || echo "Failed to delete $run_id (may already be gone)"
-              done
+          for id in $runs; do
+            echo "Deleting workflow run ID $id"
+            gh api -X DELETE /repos/$owner/$repo/actions/runs/$id
           done
 
-          echo "Done."
-          
-
+          echo "All workflow runs deleted."
