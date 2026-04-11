@@ -38,16 +38,7 @@
 name: Cleanup Workflow Runs
 on:
   workflow_dispatch:
-    inputs:
-      keep:
-        description: "Number of recent runs to keep per workflow"
-        default: "5"
-      status:
-        description: "Filter by status (or 'all')"
-        default: "all"
-        type: choice
-        options: [all, failure, cancelled, skipped, success]
-
+  
 permissions:
   actions: write
   contents: read
@@ -62,8 +53,6 @@ jobs:
         run: |
           owner="${{ github.repository_owner }}"
           repo="${{ github.event.repository.name }}"
-          keep="${{ inputs.keep }}"
-          status="${{ inputs.status }}"
           current_run="${{ github.run_id }}"
 
           echo "Fetching workflow list for $owner/$repo..."
@@ -84,7 +73,6 @@ jobs:
               --paginate \
               | jq -r '.workflow_runs[].id' \
               | grep -v "^$current_run$" \
-              | tail -n "+$((keep + 1))" \
               | while read -r run_id; do
                 echo "Deleting run $run_id"
                 gh api -X DELETE /repos/$owner/$repo/actions/runs/$run_id \
