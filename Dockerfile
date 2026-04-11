@@ -1,19 +1,21 @@
 # Build stage
-FROM python:3.11-slim AS builder
+FROM python:3.13-slim AS builder
 WORKDIR /app
 
-COPY requirements.txt pyproject.toml* setup.py* ./
-RUN pip install --no-cache-dir build && \
-    if [ -f pyproject.toml ]; then pip install .; elif [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+RUN pip install --no-cache-dir uv
+
+COPY pyproject.toml ./
+RUN uv sync --no-dev
 
 # Production stage
-FROM python:3.11-slim
+FROM python:3.13-slim
 WORKDIR /app
 
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /app/.venv /app/.venv
 COPY . .
 
 ENV PYTHONUNBUFFERED=1
+ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000
 
-CMD ["python", "app.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

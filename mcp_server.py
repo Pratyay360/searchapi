@@ -7,6 +7,7 @@ mcp = FastMCP("SearchAPI")
 @mcp.tool()
 async def web_search(query: str, limit: int = 10) -> list[str]:
     """Search the web for the given query and return a list of URLs."""
+    # pyrefly: ignore [bad-return]
     return await search(query, limit)
 
 
@@ -31,18 +32,21 @@ async def search_papers(query: str, limit: int = 5) -> list[str]:
 @mcp.tool()
 async def search_books(query: str, limit: int = 10) -> list[str]:
     """Search for books and return a list of URLs."""
+    # pyrefly: ignore [bad-return]
     return await searchBooks(query, limit)
 
 
 @mcp.tool()
 async def search_news(query: str, limit: int = 10) -> list[str]:
     """Search for news articles and return a list of URLs."""
+    # pyrefly: ignore [bad-return]
     return await searchNews(query, limit)
 
 
 @mcp.tool()
 async def search_pdfs(query: str, limit: int = 10) -> list[str]:
     """Search for PDF documents and return a list of URLs."""
+    # pyrefly: ignore [bad-return]
     return await search(f"filetype:pdf {query}", limit)
 
 
@@ -52,6 +56,7 @@ async def search_filetype(query: str, filetype: str, limit: int = 10) -> list[st
 
     filetype examples: pdf, doc, docx, ppt, pptx, xls, xlsx.
     """
+    # pyrefly: ignore [bad-return]
     return await search(f"filetype:{filetype} {query}", limit)
 
 
@@ -63,8 +68,10 @@ async def search_repositories(query: str, limit: int = 10) -> list[str]:
     """
     res = []
     s = await search(f"{query} site:github.com", limit)
+    # pyrefly: ignore [bad-argument-type]
     res.extend(s)
     s = await search(f"{query} site:gitlab.com", limit)
+    # pyrefly: ignore [bad-argument-type]
     res.extend(s)
     return res
 
@@ -78,6 +85,7 @@ async def search_wiki(query: str, limit: int = 10) -> list[str]:
     merged = []
     for site in ["wikipedia.org", "wikibooks.org", "wiktionary.org", "wikiquote.org", "wikisource.org"]:
         res = await search(f"{query} site:{site}", limit)
+        # pyrefly: ignore [bad-argument-type]
         merged.extend(res)
     return merged
 

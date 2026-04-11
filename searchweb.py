@@ -2,11 +2,11 @@ import asyncio
 import time
 from random import shuffle
 from typing import List, Optional
-import requests
+
 import urllib3
-from crossref.restful import Works
 from ddgs import DDGS
 from fake_useragent import UserAgent
+from habanero import Crossref
 
 urllib3.disable_warnings()
 ua = UserAgent()
@@ -70,13 +70,14 @@ async def searchNews(query: str, max_results: int = 10):
 
 
 async def searchPaper(query: str, max_results: int = 5):
-    works = Works()
+    cr = Crossref()
     try:
-        a = requests.get(works.query(query).url, headers={"User-Agent": f"{ua.random}"})
+        results = cr.works(query=query, limit=max_results)
         res = []
-        x = a.json().get("message").get("items")
-        for i in x:
-            res.append(i.get("DOI"))
+        for item in results["message"]["items"]:
+            doi = item.get("DOI")
+            if doi:
+                res.append(doi)
         return res
     except Exception as e:
         raise RuntimeError(f"Search failed {e}")
