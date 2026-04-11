@@ -1,21 +1,12 @@
-# Build stage
-FROM python:3.13-slim AS builder
+FROM ghcr.io/astral-sh/uv:alpine3.22
+
 WORKDIR /app
 
-RUN pip install --no-cache-dir uv
+ENV UV_NO_DEV=1 \
+    PYTHONUNBUFFERED=1
 
-COPY pyproject.toml ./
-RUN uv sync --no-dev
-
-# Production stage
-FROM python:3.13-slim
-WORKDIR /app
-
-COPY --from=builder /app/.venv /app/.venv
-COPY . .
-
-ENV PYTHONUNBUFFERED=1
-ENV PATH="/app/.venv/bin:$PATH"
+# Cache dependency install layer separately from source
+COPY . ./
+RUN uv sync --frozen
 EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvx", "fastapi", "run"]
