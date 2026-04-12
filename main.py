@@ -60,9 +60,13 @@ async def search_engine(query: str, engine: str, limit: int):
         else:
             return JSONResponse(
                 content={
-                    f"Invalid engine: {engine}  choose one from ['bing', 'brave', 'duckduckgo', 'google', 'mojeek', 'yandex', 'yahoo', 'wikipedia']"
+                    "error": (
+                        f"Invalid engine: {engine}. Choose one from "
+                        "['bing', 'brave', 'duckduckgo', 'google', 'mojeek', "
+                        "'yandex', 'yahoo', 'wikipedia']"
+                    )
                 },
-                status_code=status.HTTP_200_OK,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
     except Exception as e:
         return JSONResponse(
