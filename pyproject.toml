@@ -1,0 +1,30 @@
+[project]
+name = "searchweb"
+version = "0.1.0"
+description = "A rest api for web search using meta search"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+dependencies = [
+  "fastapi[standard]>=0.121.3",
+  "fastapi-cloud>=0.0.1",
+  "fastapi-mcp>=0.4.0",
+  "asyncio>=4.0.0",
+  "ddgs>=9.14.1",
+  "fake-useragent>=2.2.0",
+  "habanero>=2.3.0",
+  "typing>=3.10.0.0",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["searchweb", "main", "mcp_server"]
+
+[tool.setuptools.package-dir]
+"" = "."
+
+[tool.pyrefly]
+project-includes = ["**/*.py*", "**/*.ipynb"]

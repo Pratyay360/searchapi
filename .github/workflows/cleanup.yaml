@@ -1,0 +1,36 @@
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh jq -y
+
+      - name: Delete old workflow runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          owner="${{ github.repository_owner }}"
+          repo="${{ github.event.repository.name }}"
+
+          echo "Fetching workflow runs for $owner/$repo..."
+
+          runs=$(gh api /repos/$owner/$repo/actions/runs | jq -r '.workflow_runs[].id')
+
+          if [ -z "$runs" ]; then
+            echo "No workflow runs found."
+            exit 0
+          fi
+
+          for id in $runs; do
+            echo "Deleting workflow run ID $id"
+            gh api -X DELETE /repos/$owner/$repo/actions/runs/$id
+          done
+
+          echo "All workflow runs deleted."

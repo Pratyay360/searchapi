@@ -1,0 +1,10 @@
+__*__
+.fastapi*
+!.gitignore
+!.github
+!.dockerignore
+.venv
+!.docker*
+*egg-info
+.vercel
+.ruff*
