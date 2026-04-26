@@ -47,8 +47,8 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
-            docker.io/${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}
-            quay.io/pratyaymustafi/${{ github.event.repository.name }}
+            docker.io/${{ github.repository }}
+            quay.io/${{ github.repository }}
           tags: |
             type=raw,value=latest
             type=raw,value=alpine
@@ -59,8 +59,8 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
-            docker.io/${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}
-            quay.io/pratyaymustafi/${{ github.event.repository.name }}
+            docker.io/${{ github.repository }}
+            quay.io/${{ github.repository }}
           tags: |
             type=raw,value=debian
 
