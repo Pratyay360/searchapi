@@ -6,5 +6,5 @@ services:
     repo: https://github.com/Pratyay360/search-api
     plan: free
     dockerContext: .
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./Containerfile
     autoDeployTrigger: commit

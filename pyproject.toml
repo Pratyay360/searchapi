@@ -1,7 +1,7 @@
 [project]
 name = "searchweb"
-version = "0.1.0"
-description = "A rest api for web search using meta search"
+version = "0.3.0"
+description = "A SearXNG-style meta search API with REST and MCP interfaces"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "Apache-2.0"
@@ -10,10 +10,13 @@ dependencies = [
   "fastapi-cloud>=0.0.1",
   "fastapi-mcp>=0.4.0",
   "asyncio>=4.0.0",
-  "ddgs>=9.14.1",
   "fake-useragent>=2.2.0",
   "habanero>=2.3.0",
   "typing>=3.10.0.0",
+  "httpx>=0.27.0",
+  "lxml>=6.1.1",
+  "fixit>=2.2.1",
+  "pyrefly>=1.1.1",
 ]
 
 [build-system]
@@ -27,4 +30,16 @@ py-modules = ["searchweb", "main", "mcp_server"]
 "" = "."
 
 [tool.pyrefly]
-project-includes = ["**/*.py*", "**/*.ipynb"]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+project-excludes = [
+    "src/searx/**",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]

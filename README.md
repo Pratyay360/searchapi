@@ -10,8 +10,6 @@ It also ships as an **MCP (Model Context Protocol) server**, allowing AI assista
 
 [![searchapi](https://github.com/user-attachments/assets/47b22768-090e-4a65-82d4-eed3edb92644)](https://hub.docker.com/r/pratyay360/searchapi)
 
-
-
 # Installation guide
 
 ```bash
@@ -42,17 +40,17 @@ python mcp_server.py
 
 ### Available MCP tools
 
-| Tool | Description |
-|---|---|
-| `web_search` | General web search, returns a list of URLs |
-| `search_by_engine` | Search via a specific engine (`bing`, `brave`, `duckduckgo`, `google`, `mojeek`, `yandex`, `yahoo`, `wikipedia`) |
-| `search_papers` | Search academic papers, returns DOIs |
-| `search_books` | Search for books, returns URLs |
-| `search_news` | Search news articles, returns URLs |
-| `search_pdfs` | Search for PDF documents, returns URLs |
-| `search_filetype` | Search for files of a given type (pdf, docx, pptx …) |
-| `search_repositories` | Search GitHub & GitLab repositories, returns URLs |
-| `search_wiki` | Search Wikipedia and Wikimedia sites, returns URLs |
+| Tool                  | Description                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `web_search`          | General web search, returns a list of URLs                                                                       |
+| `search_by_engine`    | Search via a specific engine (`bing`, `brave`, `duckduckgo`, `google`, `mojeek`, `yandex`, `yahoo`, `wikipedia`) |
+| `search_papers`       | Search academic papers, returns DOIs                                                                             |
+| `search_books`        | Search for books, returns URLs                                                                                   |
+| `search_news`         | Search news articles, returns URLs                                                                               |
+| `search_pdfs`         | Search for PDF documents, returns URLs                                                                           |
+| `search_filetype`     | Search for files of a given type (pdf, docx, pptx …)                                                             |
+| `search_repositories` | Search GitHub & GitLab repositories, returns URLs                                                                |
+| `search_wiki`         | Search Wikipedia and Wikimedia sites, returns URLs                                                               |
 
 ### Claude Desktop configuration example
 

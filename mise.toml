@@ -1,0 +1,9 @@
+[tools]
+uv = "latest"
+black = "latest"
+ruff = "latest"
+prettier = "latest"
+biome = "latest"
+
+[deps]
+uv = { auto = true }
