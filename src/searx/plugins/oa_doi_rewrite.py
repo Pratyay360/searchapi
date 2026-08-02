@@ -6,7 +6,7 @@ import typing
 import re
 from urllib.parse import parse_qsl
 
-from  import gettext
+from flask_babel import gettext
 from searx import get_setting
 from searx.plugins import Plugin, PluginInfo
 from searx.extended_types import sxng_request

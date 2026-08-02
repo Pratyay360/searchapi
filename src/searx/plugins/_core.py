@@ -18,8 +18,12 @@ from searx.extended_types import SXNG_Request
 
 if t.TYPE_CHECKING:
     from searx.search import SearchWithPlugins
-    from searx.result_types import Result, EngineResults, LegacyResult  # pyright: ignore[reportPrivateLocalImportUsage]
-    import 
+    from searx.result_types import (
+        Result,
+        EngineResults,
+        LegacyResult,
+    )  # pyright: ignore[reportPrivateLocalImportUsage]
+    import flask
 
 log: logging.Logger = logging.getLogger("searx.plugins")
 

@@ -69,7 +69,7 @@ class Network:
         verify: bool = True,
         enable_http2: bool = False,
         max_connections: int | None = None,  # pyright: ignore[reportArgumentType]
-        max_keepalive_connections: int | None = None,  # pyright: ignore[reportArgumentType]
+        max_keepalive_connections: (int | None) = None,  # pyright: ignore[reportArgumentType]
         keepalive_expiry: float | None = None,  # pyright: ignore[reportArgumentType]
         proxies: str | dict[str, str] | None = None,
         using_tor_proxy: bool = False,
@@ -276,7 +276,14 @@ class Network:
 
     def is_valid_response(self, response: httpx.Response) -> bool:
         # pylint: disable=too-many-boolean-expressions
-        return not (self.retry_on_http_error is True and 400 <= response.status_code <= 599 or isinstance(self.retry_on_http_error, list) and response.status_code in self.retry_on_http_error or isinstance(self.retry_on_http_error, int) and response.status_code == self.retry_on_http_error)
+        return not (
+            self.retry_on_http_error is True
+            and 400 <= response.status_code <= 599
+            or isinstance(self.retry_on_http_error, list)
+            and response.status_code in self.retry_on_http_error
+            or isinstance(self.retry_on_http_error, int)
+            and response.status_code == self.retry_on_http_error
+        )
 
     async def call_client(
         self, stream: bool, method: str, url: str, **kwargs: t.Any
@@ -350,8 +357,8 @@ def check_network_configuration() -> None:
 
 
 def initialize(
-    settings_engines: list[dict[str, t.Any]] | None = None,  # pyright: ignore[reportArgumentType]
-    settings_outgoing: dict[str, t.Any] | None = None,  # pyright: ignore[reportArgumentType]
+    settings_engines: (list[dict[str, t.Any]] | None) = None,  # pyright: ignore[reportArgumentType]
+    settings_outgoing: (dict[str, t.Any] | None) = None,  # pyright: ignore[reportArgumentType]
 ) -> None:
     # pylint: disable=import-outside-toplevel)
     from searx import settings

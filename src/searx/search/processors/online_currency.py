@@ -6,7 +6,7 @@ import typing as t
 import unicodedata
 import re
 
-import 
+import flask
 import babel
 
 from searx.data import CURRENCIES
@@ -93,7 +93,7 @@ class OnlineCurrencyProcessor(OnlineProcessor):
         if from_iso4217 is None or to_iso4217 is None:
             return None
 
-        ui_locale = .get_locale() or babel.Locale.parse("en")
+        ui_locale = flask_babel.get_locale() or babel.Locale.parse("en")
         from_name: str = CURRENCIES.iso4217_to_name(from_iso4217, ui_locale.language)  # pyright: ignore[reportAssignmentType]
         to_name: str = CURRENCIES.iso4217_to_name(to_iso4217, ui_locale.language)  # pyright: ignore[reportAssignmentType]
 

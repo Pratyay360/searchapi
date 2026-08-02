@@ -5,7 +5,7 @@ import typing as t
 
 import datetime
 
-from  import gettext
+from flask_babel import gettext
 from searx.result_types import EngineResults
 from searx.weather import DateTime, GeoLocation
 

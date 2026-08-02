@@ -103,9 +103,7 @@ def parse_time_range(form: dict[str, str]) -> str | None:
     return query_time_range
 
 
-def parse_timeout(
-    form: dict[str, str], raw_text_query: RawTextQuery
-) -> float | None:
+def parse_timeout(form: dict[str, str], raw_text_query: RawTextQuery) -> float | None:
     timeout_limit = raw_text_query.timeout_limit
     if timeout_limit is None:
         timeout_limit = form.get("timeout_limit")

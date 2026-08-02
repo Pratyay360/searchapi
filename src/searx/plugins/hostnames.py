@@ -85,7 +85,7 @@ import typing as t
 import re
 from urllib.parse import urlunparse, urlparse
 
-from  import gettext  # pyright: ignore[reportUnknownVariableType]
+from flask_babel import gettext  # pyright: ignore[reportUnknownVariableType]
 
 from searx import settings
 from searx.result_types._base import MainResult, LegacyResult
@@ -95,7 +95,7 @@ from searx.plugins import Plugin, PluginInfo
 from ._core import log
 
 if t.TYPE_CHECKING:
-    import 
+    import flask
     from searx.search import SearchWithPlugins
     from searx.extended_types import SXNG_Request
     from searx.result_types import Result

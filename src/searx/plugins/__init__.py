@@ -29,7 +29,7 @@ answer area:
 
 .. code:: python
 
-   from  import gettext as _
+   from flask_babel import gettext as _
    from searx.plugins import Plugin
    from searx.result_types import Answer
 

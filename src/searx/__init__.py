@@ -2,6 +2,7 @@
 # pylint: disable=missing-module-docstring, cyclic-import
 from __future__ import annotations
 
+import searx.flask_compat
 import typing as t
 import sys
 import os
@@ -102,6 +103,7 @@ def _is_color_terminal():
 
 def _logging_config_debug() -> None:
     try:
+        import coloredlogs
     except ImportError:
         coloredlogs = None
 

@@ -9,7 +9,7 @@ from ipaddress import ip_address
 import typing
 
 import re
-from  import gettext
+from flask_babel import gettext
 from httpx import HTTPError
 
 from searx.network import get

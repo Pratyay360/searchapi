@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlencode
 from collections import OrderedDict
 from collections.abc import Iterable
 
-import 
+import flask
 import babel
 import babel.core
 
@@ -25,7 +25,6 @@ from searx.engines import DEFAULT_CATEGORY
 from searx.extended_types import SXNG_Request
 from searx.locales import LOCALE_NAMES
 from searx.webutils import VALID_LANGUAGE_CODE
-
 
 COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 5  # 5 years
 DOI_RESOLVERS = list(settings["doi_resolvers"])
@@ -69,7 +68,7 @@ class Setting:
         """
         return self.value
 
-    def save(self, name: str, resp: .Response) -> None:
+    def save(self, name: str, resp: flask.Response) -> None:
         """Save cookie ``name`` in the HTTP response object
 
         If needed, its overwritten in the inheritance."""
@@ -136,7 +135,7 @@ class MultipleChoiceSetting(Setting):
             if choice in self.choices and choice not in self.value:
                 self.value.append(choice)
 
-    def save(self, name: str, resp: .Response) -> None:
+    def save(self, name: str, resp: flask.Response) -> None:
         """Save cookie ``name`` in the HTTP response object"""
         resp.set_cookie(name, ",".join(self.value), max_age=COOKIE_MAX_AGE)
 
@@ -169,7 +168,7 @@ class SetSetting(Setting):
         elements = data.split(",")
         self.values = set(elements)
 
-    def save(self, name: str, resp: .Response) -> None:
+    def save(self, name: str, resp: flask.Response) -> None:
         """Save cookie ``name`` in the HTTP response object"""
         resp.set_cookie(name, ",".join(self.values), max_age=COOKIE_MAX_AGE)
 
@@ -227,7 +226,7 @@ class MapSetting(Setting):
         self.value = self.map[data]
         self.key = data  # pylint: disable=attribute-defined-outside-init
 
-    def save(self, name: str, resp: .Response) -> None:
+    def save(self, name: str, resp: flask.Response) -> None:
         """Save cookie ``name`` in the HTTP response object"""
         if hasattr(self, "key"):
             resp.set_cookie(name, self.key, max_age=COOKIE_MAX_AGE)
@@ -252,7 +251,7 @@ class BooleanSetting(Setting):
         self.value = MAP_STR2BOOL[data]
         self.key = self.normalized_str(self.value)  # pylint: disable=attribute-defined-outside-init
 
-    def save(self, name: str, resp: .Response) -> None:
+    def save(self, name: str, resp: flask.Response) -> None:
         """Save cookie ``name`` in the HTTP response object"""
         if hasattr(self, "key"):
             resp.set_cookie(name, self.key, max_age=COOKIE_MAX_AGE)
@@ -261,7 +260,9 @@ class BooleanSetting(Setting):
 class BooleanChoices:
     """Maps strings to booleans that are either true or false."""
 
-    def __init__(self, name: str, choices: dict[str, bool], locked: bool = False) -> None:
+    def __init__(
+        self, name: str, choices: dict[str, bool], locked: bool = False
+    ) -> None:
         self.name: str = name
         self.choices: dict[str, bool] = choices
         self.locked: bool = locked
@@ -298,7 +299,7 @@ class BooleanChoices:
     def disabled(self) -> Generator[str]:
         return (k for k, v in self.choices.items() if not v)
 
-    def save(self, resp: .Response) -> None:
+    def save(self, resp: flask.Response) -> None:
         """Save cookie in the HTTP response object"""
         disabled_changed = (k for k in self.disabled if self.default_choices[k])
         enabled_changed = (k for k in self.enabled if not self.default_choices[k])
@@ -600,7 +601,7 @@ class Preferences:
             ret_val = self.key_value_settings[user_setting_name].get_value()
         return ret_val
 
-    def save(self, resp: .Response):
+    def save(self, resp: flask.Response):
         """Save cookie in the HTTP response object"""
         for user_setting_name, user_setting in self.key_value_settings.items():
             # pylint: disable=unnecessary-dict-index-lookup

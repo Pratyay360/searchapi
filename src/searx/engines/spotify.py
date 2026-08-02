@@ -39,9 +39,7 @@ def request(query, params):
         data={"grant_type": "client_credentials"},
         headers={
             "Authorization": "Basic "
-            + base64.b64encode(
-                f"{api_client_id}:{api_client_secret}".encode()
-            ).decode()
+            + base64.b64encode(f"{api_client_id}:{api_client_secret}".encode()).decode()
         },
     )
     j = loads(r.text)

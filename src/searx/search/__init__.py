@@ -9,7 +9,7 @@ import threading
 from timeit import default_timer
 from uuid import uuid4
 
-from  import copy_current_request_context
+from flask import copy_current_request_context
 
 from searx import logger
 from searx import settings
@@ -133,7 +133,9 @@ class Search:
 
         return requests, actual_timeout
 
-    def search_multiple_requests(self, requests: list[tuple[str, str, RequestParams]]) -> None:
+    def search_multiple_requests(
+        self, requests: list[tuple[str, str, RequestParams]]
+    ) -> None:
         # pylint: disable=protected-access
         search_id = str(uuid4())
 

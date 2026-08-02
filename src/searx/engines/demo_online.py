@@ -113,7 +113,8 @@ def response(resp: "SXNG_Response") -> EngineResults:
             + " ({date_display}) // {artist_display}".format(**result),
             "content": "{medium_display} // {dimensions}".format(**result),
             "author": ", ".join(result["artist_titles"]),
-            "img_src": image_api + "/{image_id}/full/843,/0/default.jpg".format(**result),
+            "img_src": image_api
+            + "/{image_id}/full/843,/0/default.jpg".format(**result),
             "template": "images.html",
         }
 

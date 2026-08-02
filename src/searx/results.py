@@ -37,11 +37,11 @@ def calculate_score(
     return score
 
 
-
 class Timing:
     engine: str
     total: float
     load: float
+
 
 class UnresponsiveEngine:
     engine: str
@@ -370,7 +370,12 @@ def merge_two_main_results(
         origin.title = other.title
 
     # merge all result's parameters not found in origin
-    if isinstance(other, MainResult) and isinstance(origin, MainResult) or isinstance(other, LegacyResult) and isinstance(origin, LegacyResult):
+    if (
+        isinstance(other, MainResult)
+        and isinstance(origin, MainResult)
+        or isinstance(other, LegacyResult)
+        and isinstance(origin, LegacyResult)
+    ):
         origin.defaults_from(other)
 
     # add engine to list of result-engines

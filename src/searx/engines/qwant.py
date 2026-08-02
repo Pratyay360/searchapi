@@ -48,7 +48,7 @@ from json import loads
 from urllib.parse import urlencode
 
 import babel
-from  import gettext  # pyright: ignore[reportUnknownVariableType]
+from flask_babel import gettext  # pyright: ignore[reportUnknownVariableType]
 
 from searx.enginelib.traits import EngineTraits
 from searx.exceptions import (

@@ -11,7 +11,7 @@ import socket
 from urllib.parse import urlencode
 
 import babel
-from  import gettext
+from flask_babel import gettext
 
 from searx.enginelib import EngineCache
 from searx.enginelib.traits import EngineTraits

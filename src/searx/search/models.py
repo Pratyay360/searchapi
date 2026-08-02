@@ -67,9 +67,7 @@ class SearchQuery:
         return list({engineref.category for engineref in self.engineref_list})
 
     def __repr__(self) -> str:
-        return (
-            f"SearchQuery({self.query!r}, {self.engineref_list!r}, {self.lang!r}, {self.safesearch!r}, {self.pageno!r}, {self.time_range!r}, {self.timeout_limit!r}, {self.external_bang!r}, {self.redirect_to_first_result!r})"
-        )
+        return f"SearchQuery({self.query!r}, {self.engineref_list!r}, {self.lang!r}, {self.safesearch!r}, {self.pageno!r}, {self.time_range!r}, {self.timeout_limit!r}, {self.external_bang!r}, {self.redirect_to_first_result!r})"
 
     def __eq__(self, other):
         return (

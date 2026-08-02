@@ -24,10 +24,12 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["searchweb", "main", "mcp_server"]
+py-modules = ["main"]
+packages = { find = { where = ["."], include = ["src*"] } }
+include-package-data = true
 
-[tool.setuptools.package-dir]
-"" = "."
+[tool.setuptools.package-data]
+"src.searx.data" = ["*.json"]
 
 [tool.pyrefly]
 project-includes = [

@@ -27,7 +27,7 @@ import typing as t
 
 from datetime import datetime
 from lxml import html
-from  import gettext  # pyright: ignore[reportUnknownVariableType]
+from flask_babel import gettext  # pyright: ignore[reportUnknownVariableType]
 
 from searx.network import get
 from searx.utils import eval_xpath_getindex, html_to_text

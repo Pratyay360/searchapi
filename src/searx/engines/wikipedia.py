@@ -242,7 +242,11 @@ lang_map.update(
 
 def fetch_traits(engine_traits: EngineTraits) -> None:
     fetch_wikimedia_traits(engine_traits)
-    print("WIKIPEDIA_LANGUAGES: {}".format(len(engine_traits.custom["WIKIPEDIA_LANGUAGES"])))
+    print(
+        "WIKIPEDIA_LANGUAGES: {}".format(
+            len(engine_traits.custom["WIKIPEDIA_LANGUAGES"])
+        )
+    )
 
 
 def fetch_wikimedia_traits(engine_traits: EngineTraits) -> None:

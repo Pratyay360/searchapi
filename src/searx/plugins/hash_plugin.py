@@ -5,7 +5,7 @@ import typing
 import re
 import hashlib
 
-from  import gettext
+from flask_babel import gettext
 
 from searx.plugins import Plugin, PluginInfo
 from searx.result_types import EngineResults

@@ -96,7 +96,7 @@ from ipaddress import ip_address
 import sys
 
 from pathlib import Path
-import 
+import flask
 import werkzeug
 
 import searx.compat
@@ -180,7 +180,7 @@ def filter_request(request: SXNG_Request) -> werkzeug.Response | None:
     match, msg = ip_lists.block_ip(real_ip, cfg)
     if match:
         logger.error("BLOCK %s: matched BLOCKLIST - %s", network.compressed, msg)
-        return .make_response(("IP is on BLOCKLIST - %s" % msg, 429))
+        return flaskflaskflask.make_response(("IP is on BLOCKLIST - %s" % msg, 429))
 
     # methods applied on all requests
 
@@ -227,7 +227,7 @@ def is_installed() -> bool:
     return _INSTALLED
 
 
-def initialize(app: ., settings) -> None:
+def initialize(app: flask.Flask, settings) -> None:
     """Install the limiter"""
     global _INSTALLED  # pylint: disable=global-statement
 

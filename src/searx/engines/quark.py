@@ -211,19 +211,17 @@ def parse_baike_sc(data):
 
 def parse_finance_shuidi(data):
     content = " | ".join(
-        
-            info
-            for info in [
-                data.get("establish_time"),
-                data.get("company_status"),
-                data.get("controled_type"),
-                data.get("company_type"),
-                data.get("capital"),
-                data.get("address"),
-                data.get("business_scope"),
-            ]
-            if info
-        
+        info
+        for info in [
+            data.get("establish_time"),
+            data.get("company_status"),
+            data.get("controled_type"),
+            data.get("company_type"),
+            data.get("capital"),
+            data.get("address"),
+            data.get("business_scope"),
+        ]
+        if info
     )
     return {
         "title": html_to_text(data.get("company_name")),

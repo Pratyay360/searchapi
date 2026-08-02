@@ -3,7 +3,7 @@
 
 import typing as t
 
-from  import gettext  # pyright: ignore[reportUnknownVariableType]
+from flask_babel import gettext  # pyright: ignore[reportUnknownVariableType]
 
 from searx.plugins import Plugin, PluginInfo
 

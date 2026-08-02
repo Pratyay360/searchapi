@@ -4,17 +4,20 @@
 import logging
 import typing as t
 
-from  import gettext  # pyright: ignore[reportUnknownVariableType]
+from flask_babel import gettext  # pyright: ignore[reportUnknownVariableType]
 
 from searx.data import TRACKER_PATTERNS
 
 from . import Plugin, PluginInfo
 
 if t.TYPE_CHECKING:
-    import 
+    import flask
     from searx.search import SearchWithPlugins
     from searx.extended_types import SXNG_Request
-    from searx.result_types import Result, LegacyResult  # pyright: ignore[reportPrivateLocalImportUsage]
+    from searx.result_types import (
+        Result,
+        LegacyResult,
+    )  # pyright: ignore[reportPrivateLocalImportUsage]
     from searx.plugins import PluginCfg
 
 

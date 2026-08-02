@@ -18,7 +18,7 @@ from io import StringIO
 from codecs import getincrementalencoder
 
 import msgspec
-from  import gettext, format_date  # type: ignore
+from flask_babel import gettext, format_date  # type: ignore
 
 from searx import logger, get_setting
 
@@ -91,7 +91,9 @@ class CSVWriter:
     """A CSV writer which will write rows to CSV file "f", which is encoded in
     the given encoding."""
 
-    def __init__(self, f, dialect: type[excel]=csv.excel, encoding: str="utf-8", **kwds) -> None:
+    def __init__(
+        self, f, dialect: type[excel] = csv.excel, encoding: str = "utf-8", **kwds
+    ) -> None:
         # Redirect output to a queue
         self.queue = StringIO()
         self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
@@ -224,7 +226,7 @@ def is_hmac_of(secret_key, value, hmac_to_check) -> bool:
     )
 
 
-def prettify_url(url, max_length: int=74):
+def prettify_url(url, max_length: int = 74):
     if len(url) > max_length:
         chunk_len = int(max_length / 2 + 1)
         return "{0}[...]{1}".format(url[:chunk_len], url[-chunk_len:])

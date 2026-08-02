@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal, cast
 
 from fake_useragent import UserAgent
 from fastapi import FastAPI, Query, status
@@ -27,7 +27,7 @@ app = FastAPI(title="Search API", version="0.3.0")
 async def _search_paper(query: str, max_results: int = 5) -> list[str]:
     cr = Crossref()
     try:
-        results = cr.works(query=query, limit=max_results)
+        results = cast(dict[str, Any], cr.works(query=query, limit=max_results))
         return [item["DOI"] for item in results["message"]["items"] if item.get("DOI")]
     except Exception as e:
         raise RuntimeError(f"Paper search failed: {e}") from e
@@ -240,7 +240,7 @@ async def favicon():
     return FileResponse(path="favicon.ico")
 
 
-mcp = FastApiMCP(app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -248,4 +248,4 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-mcp.mount()
+

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """WebApp"""
+
 # pylint: disable=use-dict-literal
 
 from searx.extended_types import SXNG_Request
@@ -29,10 +30,10 @@ from pygments.formatters import HtmlFormatter  # pylint: disable=no-name-in-modu
 from whitenoise import WhiteNoise
 from whitenoise.base import Headers
 
-import
+import flask
 
-from  import (
-    ,
+from flask import (
+    Flask,
     render_template,
     url_for,
     make_response,
@@ -42,7 +43,7 @@ from  import (
 from .wrappers import Response
 from .json import jsonify
 
-from  import (
+from flask_babel import (
     Babel,
     gettext,
 )
@@ -127,7 +128,6 @@ from searx.sxng_locales import sxng_locales
 import searx.search
 from searx.network import stream as http_stream, set_context_network_name
 
-
 logger = logger.getChild("webapp")
 
 warnings.simplefilter("always")
@@ -151,7 +151,7 @@ STATS_SORT_PARAMETERS = {
 }
 
 #  app
-app = (__name__, static_folder=None, template_folder=templates_path)
+app = Flask(__name__, static_folder=None, template_folder=templates_path)
 
 app.jinja_env.trim_blocks = True
 app.jinja_env.lstrip_blocks = True
@@ -169,7 +169,9 @@ def get_locale() -> str:
 babel = Babel(app, locale_selector=get_locale)
 
 
-def _get_browser_language(req: SXNG_Request, lang_list: dict_keys[str, str]) -> str | None:
+def _get_browser_language(
+    req: SXNG_Request, lang_list: dict_keys[str, str]
+) -> str | None:
     client = ClientPref.from_http_request(req)
     locale = match_locale(client.locale_tag, lang_list, fallback="en")
     return locale
@@ -188,7 +190,11 @@ def _get_locale_rfc5646(locale):
 # code-highlighter
 @app.template_filter("code_highlighter")
 def code_highlighter(
-    codelines, language=None, hl_lines=None, strip_whitespace: bool=True, strip_new_lines: bool=True
+    codelines,
+    language=None,
+    hl_lines=None,
+    strip_whitespace: bool = True,
+    strip_new_lines: bool = True,
 ) -> str:
     if not language:
         language = "text"
@@ -549,7 +555,7 @@ def pre_request() -> None:
 
 
 @app.after_request
-def add_default_headers(response: .Response):
+def add_default_headers(response: flask.Response):
     # set default http headers
     for header, value in settings["server"]["default_http_headers"].items():
         if header in response.headers:
@@ -559,7 +565,7 @@ def add_default_headers(response: .Response):
 
 
 @app.after_request
-def post_request(response: .Response):
+def post_request(response: flask.Response):
     total_time = default_timer() - sxng_request.start_time
     timings_all = [
         "total;dur=" + str(round(total_time * 1000, 3)),
@@ -673,7 +679,7 @@ def search():
         output_format = "html"
 
     if output_format not in settings["search"]["formats"]:
-        .abort(403)
+        flask.abort(403)
 
     # check if there is query (not None and not an empty string)
     if not sxng_request.form.get("q"):
@@ -851,7 +857,7 @@ def info(pagename, locale):
     """Render page of online user documentation"""
     page = infopage.INFO_PAGES.get_page(pagename, locale)
     if page is None:
-        .abort(404)
+        flask.abort(404)
 
     user_locale = sxng_request.preferences.get_value("locale")
     return render(
@@ -1338,7 +1344,7 @@ def manifest():
 
 
 @app.route("/logo/<resolution>")
-def manifest_logo(resolution: int=0):
+def manifest_logo(resolution: int = 0):
     theme = sxng_request.preferences.get_value("theme")
     return send_from_directory(
         os.path.join(

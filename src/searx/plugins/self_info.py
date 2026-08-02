@@ -5,7 +5,7 @@ import typing
 import re
 from ipaddress import ip_address
 
-from  import gettext
+from flask_babel import gettext
 
 from searx.result_types import EngineResults
 

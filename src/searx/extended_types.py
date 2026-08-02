@@ -19,12 +19,13 @@
    :members:
 
 """
+
 # pylint: disable=invalid-name
 
 __all__ = ["SXNG_Request", "sxng_request", "SXNG_Response"]
 
 import typing
-import 
+import flask
 import httpx
 
 if typing.TYPE_CHECKING:
@@ -37,7 +38,7 @@ if typing.TYPE_CHECKING:
     )
 
 
-class SXNG_Request(.Request):
+class SXNG_Request(flask.Request):
     """SearXNG extends the class :py:obj:`.Request` with properties from
     *this* class definition, see type cast :py:obj:`sxng_request`.
     """
@@ -70,7 +71,7 @@ class SXNG_Request(.Request):
 
 
 #: A replacement for :py:obj:`.request` with type cast :py:`SXNG_Request`.
-sxng_request = typing.cast(SXNG_Request, .request)
+sxng_request = typing.cast(SXNG_Request, flask.request)
 
 
 class SXNG_Response(httpx.Response):

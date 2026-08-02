@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from dateutil import parser
 
 import babel
-import
+import flask_babel
 from lxml import html
 from searx.utils import eval_xpath, eval_xpath_list, extract_text
 
@@ -64,7 +64,7 @@ def response(resp):
         popularity = extract_text(eval_xpath(result, popularity_xpath)).strip()
         popularity = babel.numbers.parse_decimal(popularity, locale="en_US")
         # popularity is of type str ..
-        popularity = __cached__.(popularity)
+        popularity = flask_babel.format_decimal(popularity)
 
         results.append(
             {

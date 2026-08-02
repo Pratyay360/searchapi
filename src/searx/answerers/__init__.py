@@ -7,7 +7,7 @@ area:
 
 .. code::
 
-   from  import gettext as _
+   from flask_babel import gettext as _
    from searx.answerers import Answerer
    from searx.result_types import Answer
 

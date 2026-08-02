@@ -112,7 +112,7 @@ def load_engine(engine_data: dict[str, t.Any]) -> "Engine | types.ModuleType | N
 
     if engine_name.lower() != engine_name:
         logger.warning(
-            f'Engine name is not lowercase: "{engine_name}", converting to lowercase')
+            f'Engine name is not lowercase: "{engine_name}", converting to lowercase'
         )
         engine_name = engine_name.lower()
         engine_data["name"] = engine_name

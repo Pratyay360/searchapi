@@ -4,7 +4,7 @@ PDBe (Protein Data Bank in Europe)
 """
 
 from json import loads
-from  import gettext
+from flask_babel import gettext
 
 # about
 about = {

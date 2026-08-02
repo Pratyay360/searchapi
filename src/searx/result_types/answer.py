@@ -26,11 +26,12 @@ template.
    :members:
    :show-inheritance:
 """
+
 # pylint: disable=too-few-public-methods
 
 __all__ = ["AnswerSet", "Answer", "Translations", "WeatherAnswer"]
 
-from  import gettext
+from flask_babel import gettext
 import msgspec
 
 from searx import weather

@@ -915,13 +915,17 @@ def init_wikidata_properties() -> None:
     # WIKIDATA_PROPERTIES : add property labels
     wikidata_property_names: list[str] = []
     for attribute in get_attributes("en"):
-        if type(attribute) in (
-            WDAttribute,
-            WDAmountAttribute,
-            WDURLAttribute,
-            WDDateAttribute,
-            WDLabelAttribute,
-        ) and attribute.name not in WIKIDATA_PROPERTIES:
+        if (
+            type(attribute)
+            in (
+                WDAttribute,
+                WDAmountAttribute,
+                WDURLAttribute,
+                WDDateAttribute,
+                WDLabelAttribute,
+            )
+            and attribute.name not in WIKIDATA_PROPERTIES
+        ):
             wikidata_property_names.append("wd:" + attribute.name)
     query = QUERY_PROPERTY_NAMES.replace(
         "%ATTRIBUTES%", " ".join(wikidata_property_names)

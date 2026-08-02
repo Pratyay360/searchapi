@@ -57,7 +57,9 @@ def request(query, params):
     # - example: one week (10080 minutes) '&qft= filterui:videoage-lt10080'  '&form=VRFLTR'
     if params["time_range"]:
         query_params["form"] = "VRFLTR"
-        query_params["qft"] = " filterui:videoage-lt{}".format(time_map[params["time_range"]])
+        query_params["qft"] = " filterui:videoage-lt{}".format(
+            time_map[params["time_range"]]
+        )
 
     params["url"] = base_url + "/videos/asyncv2?" + urlencode(query_params)
 

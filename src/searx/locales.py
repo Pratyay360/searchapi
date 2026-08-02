@@ -33,8 +33,8 @@ import babel
 from babel.support import Translations
 import babel.languages
 import babel.core
-import   # pyright: ignore[reportMissingTypeStubs]
-from .ctx import has_request_context
+import flask_babel  # pyright: ignore[reportMissingTypeStubs]
+from flask.ctx import has_request_context
 
 from searx import (
     data,
@@ -47,7 +47,7 @@ logger = logger.getChild("locales")
 
 
 # safe before monkey patching .get_translations
-__get_translations = .get_translations
+__get_translations = flask_babel.get_translations
 
 LOCALE_NAMES: dict[str, str] = {}
 """Mapping of locales and their description.  Locales e.g. 'fr' or 'pt-BR' (see
@@ -111,7 +111,7 @@ def get_translations():
     if has_request_context():
         use_translation = sxng_request.form.get("use-translation")
         if use_translation in ADDITIONAL_TRANSLATIONS:
-            babel_ext = .current_app.extensions["babel"]
+            babel_ext = flaskflaskflask.current_app.extensions["babel"]
             return Translations.load(
                 babel_ext.translation_directories[0], use_translation
             )
@@ -146,7 +146,7 @@ def locales_initialize() -> None:
     - monkey patch :py:obj:`.get_translations` by :py:obj:`get_translations`
     - init global names :py:obj:`LOCALE_NAMES`, :py:obj:`RTL_LOCALES`
     """
-    .get_translations = get_translations
+    flask_babelflask_babel.get_translations = get_translations
     LOCALE_NAMES.update(data.LOCALES["LOCALE_NAMES"])
     RTL_LOCALES.update(data.LOCALES["RTL_LOCALES"])
 

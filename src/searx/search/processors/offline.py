@@ -27,11 +27,7 @@ class OfflineProcessor(EngineProcessor):
             self.extend_container(result_container, start_time, search_results)
         except ValueError as e:
             # do not record the error
-            self.logger.exception(
-                f"engine {self.engine.name} : invalid input : {e}"
-            )
+            self.logger.exception(f"engine {self.engine.name} : invalid input : {e}")
         except Exception as e:  # pylint: disable=broad-except
             self.handle_exception(result_container, e)
-            self.logger.exception(
-                f"engine {self.engine.name} : exception : {e}"
-            )
+            self.logger.exception(f"engine {self.engine.name} : exception : {e}")

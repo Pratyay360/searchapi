@@ -121,9 +121,7 @@ def response(resp: "SXNG_Response") -> EngineResults:
         raw_date = result.get("publishedDate") or result.get("depositedDate")
         if raw_date:
             try:
-                published_date = datetime.fromisoformat(
-                    result["publishedDate"]
-                )
+                published_date = datetime.fromisoformat(result["publishedDate"])
             except (ValueError, AttributeError):
                 pass
 

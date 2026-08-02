@@ -39,9 +39,7 @@ class CurrenciesDB:
         with open(self.json_file, encoding="utf-8") as f:
             data_dict: dict[str, dict[str, str]] = json.load(f)
 
-        rows: list[CacheRowType] = [
-            (k, v, None) for k, v in data_dict["names"].items()
-        ]
+        rows: list[CacheRowType] = [(k, v, None) for k, v in data_dict["names"].items()]
         self.cache.setmany(rows, ctx=self.ctx_names)
         rows = [(k, v, None) for k, v in data_dict["iso4217"].items()]
         self.cache.setmany(rows, ctx=self.ctx_iso4217)

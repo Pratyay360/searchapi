@@ -13,7 +13,7 @@ import typing
 import re
 import babel.numbers
 
-from  import gettext, get_locale
+from flask_babel import gettext, get_locale
 
 from searx.wikidata_units import symbol_to_si
 from searx.plugins import Plugin, PluginInfo

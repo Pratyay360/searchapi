@@ -210,9 +210,7 @@ def new_client(
     for pattern, proxy_url in proxies.items():
         if not enable_http and pattern.startswith("http://"):
             continue
-        if (
-            proxy_url.startswith(("socks4://", "socks5://", "socks5h://"))
-        ):
+        if proxy_url.startswith(("socks4://", "socks5://", "socks5h://")):
             mounts[pattern] = get_transport_for_socks_proxy(
                 verify, enable_http2, local_address, proxy_url, limit, retries
             )

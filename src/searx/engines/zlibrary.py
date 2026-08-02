@@ -37,7 +37,7 @@ import typing as t
 from datetime import datetime
 from urllib.parse import quote
 
-from  import gettext  # pyright: ignore[reportUnknownVariableType]
+from flask_babel import gettext  # pyright: ignore[reportUnknownVariableType]
 from lxml import html
 
 from searx.data import ENGINE_TRAITS
