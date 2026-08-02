@@ -4,6 +4,7 @@ black = "latest"
 ruff = "latest"
 prettier = "latest"
 biome = "latest"
+railway = "latest"
 
 [deps]
 uv = { auto = true }

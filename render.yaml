@@ -1,9 +1,9 @@
 version: "1"
 services:
   - type: web
-    name: search-api
+    name: searchapi
     runtime: docker
-    repo: https://github.com/Pratyay360/search-api
+    repo: https://github.com/Pratyay360/searchapi
     plan: free
     dockerContext: .
     dockerfilePath: ./Containerfile
