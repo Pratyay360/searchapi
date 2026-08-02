@@ -1,45 +1,30 @@
-# Railway configuration
+# Search API
 
-This project defines its Railway infrastructure in code.
+A lightweight, easy to use and deploy API for web searches. It uses SearXNG at core, It gives you flexible, programmatic access to multiple search engines + can be used as mcp
 
-```txt
-.railway/railway.ts
-```
+Best part? It’s 100% free. No premium tiers, no hidden fees, no paid API keys. you just pay for your infrastructure usage...
 
-Use this file to describe the Railway project you want: services, databases, buckets, custom domains, replicas, groups, and environment variables.
+***
 
-## Common commands
+# Deploy and Host
 
-Create the configuration files:
+Getting this up and running is super straightforward. Here’s the quick rundown on hosting it.
 
-```bash
-railway config init
-```
+## About Hosting
+Because it’s a lightweight app and api 1st by default, it runs almost anywhere. You can throw it on your local machine, a Raspberry Pi, or a cheap cloud VPS. even you can deploy fastapi apps on Vercel too or use Docker which is highly recommended to keep things simple.
 
-Import an existing Railway project into code:
+## Why Deploy
+Why deploying. The link of the example instance is just for demo, this app is intended to be used with and on your own hardware full control over everything. Plus, your app don't just depends on my free trial use your own server.. :) 
 
-```bash
-railway config pull
-```
+## Common Use Cases
+* **AI Agents:** Giving LLMs live web access for up-to-date info 
+* **Research Tools:** Aggregating news, articles, or data from multiple sources at once.
+* **Automation:** Feeding clean, structured search data into rag, llm fine tuning workloads.
 
-Preview what Railway would change:
+## Dependencies for
 
-```bash
-railway config plan
-```
+### Deployment Dependencies
+For local testing, you really just uv. For a solid production setup, you’ll 
 
-Apply the planned changes:
-
-```bash
-railway config apply
-```
-
-## Notes
-
-- `railway config plan` is safe and does not change Railway.
-- `railway config apply` previews changes and asks before applying unless you pass `--yes`.
-- Destructive changes in non-interactive or agent sessions require `railway config apply --confirm-destructive` after reviewing the plan.
-- Services already managed by `railway.json` must be migrated before `.railway/railway.ts` can manage them.
-- Use `replicas` for scaling; advanced placement can still specify region names.
-- Use `group("Name", [resources])` to keep large projects organized on the Railway canvas.
-- Secrets imported from Railway are rendered as `preserve()` so existing values are retained without writing secret values to source. Use `railway config pull --omit-preserved-variables` for a smaller import.
+* ** docker/nerdctl or podman :** Honestly the easiest way to bundle everything and keep things isolated.
+* **A basic hosting: you can host on vercel, render , railway and fastapicloud because of their so much generous free limits
