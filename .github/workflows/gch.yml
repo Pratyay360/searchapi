@@ -78,7 +78,7 @@ jobs:
         uses: redhat-actions/push-to-registry@main
         with:
           registry: quay.io
-          image: quay.io/${{ github.repository }}
+          image: ${{ github.repository }}
           tags: ${{ steps.build.outputs.tags }}
 
 
