@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Literal, cast
 
-from fake_useragent import UserAgent
+import httpx
 from fastapi import FastAPI, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi_mcp import FastApiMCP
 from habanero import Crossref
 
-from src.search_service import SearchService, configure_search_service
-
-ua = UserAgent()
+# pyrefly: ignore [missing-import]
+from src.search_service import (
+    EngineProvider,
+    SearchService,
+    configure_search_service,
+    gen_useragent,
+)
 
 search_svc: SearchService = configure_search_service(
     max_concurrency=3,
@@ -47,9 +51,45 @@ async def root():
     )
 
 
+async def _probe_engine(
+    client: httpx.AsyncClient, engine: EngineProvider
+) -> tuple[str, str | None]:
+    try:
+        results = await asyncio.wait_for(
+            engine.search(client=client, query="open source", pageno=1),
+            timeout=10.0,
+        )
+        return (engine.name, None if results else "no results")
+    except Exception as exc:
+        return (engine.name, f"{exc.__class__.__name__}: {exc}")
+
+
 @app.get("/health", status_code=status.HTTP_200_OK)
-async def health():
-    return JSONResponse(content={"status": "ok"})
+async def health(probe: bool = Query(False)):
+    engines = [e.name for e in search_svc.engines]
+    if not probe:
+        return JSONResponse(content={"status": "ok", "engines": engines})
+
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(10.0), follow_redirects=True
+    ) as client:
+        outcomes = dict(
+            await asyncio.gather(
+                *(_probe_engine(client, e) for e in search_svc.engines)
+            )
+        )
+
+    unhealthy = {name: err for name, err in outcomes.items() if err}
+    if not unhealthy:
+        body = {"status": "ok", "engines": outcomes}
+    elif len(unhealthy) == len(outcomes):
+        return JSONResponse(
+            content={"status": "unhealthy", "engines": outcomes},
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    else:
+        body = {"status": "degraded", "engines": outcomes}
+    return JSONResponse(content=body, status_code=status.HTTP_200_OK)
 
 
 @app.get("/search/", status_code=status.HTTP_200_OK)
@@ -228,7 +268,7 @@ async def search_news(query: str = Query(...), limit: int = Query(10, ge=1, le=5
 @app.get("/useragent/", status_code=status.HTTP_200_OK)
 async def return_useragent():
     try:
-        return JSONResponse(content=ua.random, status_code=status.HTTP_200_OK)
+        return JSONResponse(content=gen_useragent(), status_code=status.HTTP_200_OK)
     except Exception as e:
         return JSONResponse(
             content={"error": str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -240,7 +280,6 @@ async def favicon():
     return FileResponse(path="favicon.ico")
 
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -248,4 +287,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-

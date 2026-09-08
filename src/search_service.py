@@ -1,21 +1,68 @@
 """Search api
 Provides a standalone search engine capabilities through REST and MCP interfaces.
+
+Engine providers port the data-fetch logic (endpoints, form fields, headers,
+cookies, pagination and parsing) of the corresponding upstream SearXNG engines.
 """
 
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
+import random
+import re
 import time
 import typing as t
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _package_version
+from urllib.parse import (
+    parse_qs,
+    parse_qsl,
+    quote,
+    unquote,
+    urlencode,
+    urlparse,
+    urlunparse,
+)
 
 import httpx
 from lxml import html as _lh
 
 logger = logging.getLogger("search_service")
+
+_USERAGENTS: dict[str, t.Any] = {
+    "os": ["Windows NT 10.0; Win64; x64", "X11; Linux x86_64"],
+    "ua": "Mozilla/5.0 ({os}; rv:{version}) Gecko/20100101 Firefox/{version}",
+    "versions": ["154.0", "153.0"],
+}
+"""Mirror of searx/data/useragents.json."""
+
+
+def gen_useragent() -> str:
+    """Random desktop browser User-Agent (port of ``searx.utils.gen_useragent``)."""
+    return _USERAGENTS["ua"].format(
+        os=random.choice(_USERAGENTS["os"]),
+        version=random.choice(_USERAGENTS["versions"]),
+    )
+
+
+def searxng_useragent() -> str:
+    """Static identity User-Agent for API-type requests (port of
+    ``searx.utils.searxng_useragent``, ``SearXNG/{VERSION_TAG} {suffix}``)."""
+    try:
+        pkg_version = _package_version("searchweb")
+    except PackageNotFoundError:
+        pkg_version = "unknown"
+    return f"searchweb/{pkg_version} (SearXNG-style metasearch API)"
+
+
+_HTTP_USER_AGENT = gen_useragent()
+"""Static per-process desktop User-Agent; engines whose bot protection keys
+state to the UA (e.g. DuckDuckGo's vqd) must never vary it between requests,
+and mobile UAs change server layouts and break parsing."""
 
 
 @dataclass
@@ -106,24 +153,8 @@ _SESSION_PARAMS = {
 }
 
 
-def _date_offset(today_str: str, units: int = 1, unit_type: str = "days") -> str:
-    """Subtract *units* of *unit_type* from *today_str* (YYYYMMDD) -> YYYYMMDD."""
-    today = datetime.strptime(today_str, "%Y%m%d")
-    unit_map = {
-        "days": "days",
-        "weeks": "weeks",
-        "months": "months",
-        "years": "years",
-    }
-    key = unit_map.get(unit_type, "days")
-    if key in ("months", "years"):
-        # Approximate: months as 30 days, years as 365 days
-        approx_days = 30 if key == "months" else 365
-        offset_date = today - timedelta(days=approx_days * units)
-    else:
-        kwargs = {key: units}
-        offset_date = today - timedelta(**kwargs)  # type: ignore[arg-type]
-    return offset_date.strftime("%Y%m%d")
+def _date_offset(days: int) -> str:
+    return (datetime.now() - timedelta(days=days)).strftime("%Y%m%d")
 
 
 def _strip_www(netloc: str) -> str:
@@ -176,6 +207,7 @@ _ENGINE_PRIORITY: dict[str, int] = {
     "mojeek": 2,
     "wikipedia": 3,
     "bing": 4,
+    "brave": 5,
 }
 
 
@@ -273,21 +305,76 @@ class EngineProvider:
             except Exception as exc:
                 logger.warning("Engine %s non-transient failure: %s", self.name, exc)
                 raise
-        raise last_exc  # type: ignore[misc]
+        raise RuntimeError(
+            f"Engine {self.name} exhausted {self.retries} retries: {last_exc}"
+        ) from last_exc
 
 
 # ---------------------------------------------------------------------------
-# DuckDuckGo HTML provider
+# DuckDuckGo (port of searx/engines/duckduckgo.py, no-JS html engine)
 # ---------------------------------------------------------------------------
+
+_DDG_BANGS: frozenset[str] | None = None
+_DDG_BANGS_URL = (
+    "https://raw.githubusercontent.com/searxng/searxng/master/"
+    "searx/data/external_bangs.json"
+)
+
+
+def _ddg_bangs() -> frozenset[str]:
+    global _DDG_BANGS
+    if _DDG_BANGS is None:
+        try:
+            resp = httpx.get(
+                _DDG_BANGS_URL,
+                headers={"User-Agent": searxng_useragent()},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            _DDG_BANGS = frozenset(resp.json().keys())
+        except Exception:
+            _DDG_BANGS = frozenset()
+    return _DDG_BANGS
+
+
+def _quote_ddg_bangs(query: str) -> str:
+    """Quote ``!bang`` directives so DDG does not redirect away from the
+    results page (mirrors upstream ``quote_ddg_bangs``)."""
+    quoted: list[str] = []
+    bangs = _ddg_bangs()
+    for val in re.split(r"(\s+)", query):
+        if not val.strip():
+            continue
+        if val.startswith("!") and val[1:] in bangs:
+            val = f"'{val}'"
+        quoted.append(val)
+    return " ".join(quoted)
+
+
+def _ddg_region(language: str) -> str:
+    """Map a locale tag to DuckDuckGo's region code (``wt-wt`` = all regions).
+
+    Approximates upstream trait mapping: DDG orders its tags
+    territory-language (``en-US`` -> ``us-en``); tags that already look like
+    DDG codes pass through unchanged.
+    """
+    if language == "all":
+        return "wt-wt"
+    tag = language.replace("_", "-").lower()
+    if re.fullmatch(r"[a-z]{2,3}-[a-z]{2,3}", tag):
+        first, second = tag.split("-")
+        return f"{second}-{first}"
+    return tag
 
 
 class DuckDuckGoProvider(EngineProvider):
-    """DuckDuckGo HTML search (no-JS variant via html.duckduckgo.com/html/)."""
+    """DuckDuckGo WEB search via the no-JS html endpoint (POST form data)."""
 
     name = "duckduckgo"
     timeout = 20.0
     retries = 2
 
+    _URL = "https://html.duckduckgo.com/html/"
     _TIME_RANGE_MAP: dict[str, str] = {
         "day": "d",
         "week": "w",
@@ -307,128 +394,99 @@ class DuckDuckGoProvider(EngineProvider):
         time_range: str | None = None,
         pageno: int = 1,
     ) -> list[SearchResult]:
-        # DDG does not accept queries with more than 499 chars.
         if len(query) >= 500:
             return []
 
-        # DDG form data.  On the first page ``b`` must be present (empty),
-        # exactly as the SearXNG duckduckgo engine does it.
-        region = "wt-wt" if language == "all" else language
-        data: dict[str, str] = {"q": query}
+        query = _quote_ddg_bangs(query)
+        region = _ddg_region(language)
+
+        data: dict[str, t.Any] = {"q": query}
         if pageno == 1:
             data["b"] = ""
         else:
+            # vqd is required for follow-up pages; requesting them without one
+            # is an immediate bot signal and lowers the IP reputation.
             vqd = self._vqd.get((query, region))
             if not vqd:
+                raise EngineBlockedError(f"vqd missed (page: {pageno})")
+            data["vqd"] = vqd
+            if region.startswith("zh"):
                 return []
-            offset = 10 + (pageno - 2) * 15
             data.update(
                 {
-                    "vqd": vqd,
                     "nextParams": "",
                     "api": "d.js",
                     "o": "json",
                     "v": "l",
-                    "dc": str(offset + 1),
-                    "s": str(offset),
                 }
             )
-        if time_range:
-            ddg_t = self._TIME_RANGE_MAP.get(time_range)
-            if ddg_t:
-                data["df"] = ddg_t
-        data["kl"] = region
+            offset = 10 + (pageno - 2) * 15
+            data["dc"] = offset + 1
+            data["s"] = offset
 
-        # Cookies mirror what the SearXNG DDG engine sets.  These are part of
-        # DDG's bot-blocker evasion: without ``kl``/``df``/``ah``/``l`` the
-        # server is significantly more likely to serve a challenge page.
-        cookies = {"kl": region}
-        if "df" in data:
-            cookies["df"] = data["df"]
-        # ad/ah/l are language/region identifiers.  ``ah`` == the DDG region,
-        # ``l`` == the DDG region used for the UI, ``ad`` == the DDG lang tag.
-        cookies["ad"] = region
-        cookies["ah"] = region
-        cookies["l"] = region
+        # Upstream puts empty kl in the form data when region is "all".
+        data["kl"] = "" if region == "wt-wt" else region
 
-        # Accept-Language derived from the requested language, mirroring
-        # SearXNG's behaviour: e.g. "en-US" -> "en-US,en;q=0.7".
-        ui_lang = region
-        if ui_lang.startswith("wt"):
-            accept_lang = "en-US,en;q=0.9"
-        else:
-            # Convert e.g. "en_US" -> "en-US" for the Accept-Language header.
-            accept_lang = ui_lang.replace("_", "-") + ",en;q=0.9"
+        cookies: dict[str, str] = {}
+        if region != "wt-wt":
+            cookies["kl"] = region
+        t_range = self._TIME_RANGE_MAP.get(time_range or "", "")
+        if t_range:
+            data["df"] = t_range
+            cookies["df"] = t_range
 
+        accept_lang = (
+            "en-US,en;q=0.9"
+            if language == "all"
+            else f"{language.replace('_', '-')},en;q=0.9"
+        )
         headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "User-Agent": _HTTP_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": accept_lang,
             "Content-Type": "application/x-www-form-urlencoded",
-            "Referer": "https://html.duckduckgo.com/",
+            "Referer": self._URL,
             "Sec-Fetch-Dest": "document",
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "same-origin",
             "Sec-Fetch-User": "?1",
-            "Cookie": "; ".join(f"{key}={value}" for key, value in cookies.items()),
         }
 
         resp = await client.post(
-            "https://html.duckduckgo.com/html/",
+            self._URL,
             data=data,
             headers=headers,
+            cookies=cookies,
             follow_redirects=True,
             timeout=self.timeout,
         )
         resp.raise_for_status()
-
-        if self._is_captcha(resp.text):
-            raise EngineBlockedError(
-                "DuckDuckGo returned a CAPTCHA challenge instead of results"
-            )
+        if resp.status_code == 303:
+            return []
 
         doc = _lh.fromstring(resp.text)
-        vqd = doc.xpath('//input[@name="vqd"]/@value')
-        if vqd:
-            self._vqd[(query, region)] = vqd[0]
+        if doc.xpath("//form[@id='challenge-form']"):
+            raise EngineBlockedError(f"CAPTCHA (kl: {data.get('kl')})")
+
+        form_vqd = doc.xpath('//input[@name="vqd"]/@value')
+        if form_vqd:
+            self._vqd[(query, region)] = form_vqd[0]
+
         return self._parse_results(doc)
 
-    @staticmethod
-    def _is_captcha(html_text: str) -> bool:
-        """Detect if DDG returned a CAPTCHA challenge page.
-
-        Keyword heuristics only apply when the results container is absent,
-        so ordinary result pages that merely mention "challenge"/"captcha"
-        are not misclassified.
-        """
-        if 'id="challenge-form"' in html_text:
-            return True
-        if 'id="links"' in html_text:
-            return False
-        lower = html_text.lower()
-        return "challenge" in lower and "captcha" in lower
-
-    def _parse_results(self, html_text: str | _lh.HtmlElement) -> list[SearchResult]:
+    def _parse_results(self, doc: _lh.HtmlElement) -> list[SearchResult]:
         results: list[SearchResult] = []
-        if isinstance(html_text, str):
-            try:
-                doc = _lh.fromstring(html_text)
-            except Exception:
-                return results
-        else:
-            doc = html_text
-
         for div_result in doc.xpath(
             '//div[@id="links"]/div[contains(@class, "web-result")]'
         ):
-            if "result--ad" in (div_result.get("class", "")):
+            if "result--ad" in (div_result.get("class") or ""):
                 continue
             title_links = div_result.xpath(".//h2/a")
-            if not title_links:
+            hrefs = div_result.xpath(".//h2/a/@href")
+            if not title_links or not hrefs:
                 continue
-            link = title_links[0]
-            title = "".join(link.itertext()).strip()
-            url = link.get("href", "")
+            title = "".join(title_links[0].itertext()).strip()
+            url = hrefs[0]
             if not title or not url:
                 continue
             snippet_els = div_result.xpath('.//a[contains(@class, "result__snippet")]')
@@ -442,27 +500,39 @@ class DuckDuckGoProvider(EngineProvider):
 
 
 # ---------------------------------------------------------------------------
-# Google HTML scraping provider
+# Google (port of searx/engines/google.py, WML/XML layout)
 # ---------------------------------------------------------------------------
 
 
 class GoogleProvider(EngineProvider):
-    """Google HTML search via scraping the standard web results page.
+    """Google WEB search via the WML layout.
 
-    Uses the same approach as the SearXNG google engine: sends a GET to
-    ``https://www.google.com/search`` with appropriate headers and parses
-    the HTML response.
-
-    .. warning::
-       Google may block requests that don't have proper browser-like headers.
-       This provider is best-effort and may occasionally get CAPTCHA'd.
+    The normal web layout requires JavaScript; upstream requests the legacy
+    WML layout with Nokia user agents instead, which returns server-rendered
+    results without a JS engine.
     """
 
     name = "google"
     timeout = 20.0
     retries = 1
 
-    _SAFE_MAP = {0: "off", 1: "medium", 2: "high"}
+    nokia_useragents = (
+        "Nokia7610/2.0 (5.0509.0) SymbianOS/7.0s Series60/2.1 Profile/MIDP-2.0 Configuration/CLDC-1.0",
+        "Nokia7610/2.0 (7.0642.0) SymbianOS/7.0s Series60/2.1 Profile/MIDP-2.0 Configuration/CLDC-1.0",
+        "Nokia6230/2.0 (05.50) Profile/MIDP-2.0 Configuration/CLDC-1.1",
+        "Nokia6230i/2.0 (03.80) Profile/MIDP-2.0 Configuration/CLDC-1.1",
+        "Nokia6280/2.0 (03.60) Profile/MIDP-2.0 Configuration/CLDC-1.1",
+        "NokiaN72/2.0617.1.0.3 Series60/2.8 Profile/MIDP-2.0 Configuration/CLDC-1.1",
+    )
+
+    _TIME_RANGE_MAP: dict[str, str] = {
+        "day": "d",
+        "week": "w",
+        "month": "m",
+        "year": "y",
+    }
+    _FILTER_MAP = {0: "off", 1: "medium", 2: "high"}
+    _LANG_ALIASES = {"zh": "zh-CN", "no": "nb"}
 
     async def search(
         self,
@@ -473,119 +543,111 @@ class GoogleProvider(EngineProvider):
         time_range: str | None = None,
         pageno: int = 1,
     ) -> list[SearchResult]:
-        params: dict[str, t.Any] = {
+        args: dict[str, t.Any] = {
             "q": query,
-            "hl": "en" if language == "all" else language.split("-")[0],
-            "start": (pageno - 1) * 10,
+            "sca_esv": "1",
+            "ie": "utf8",
+            "oe": "utf8",
         }
+
+        if language == "all":
+            args["hl"] = "en"
+            args["lr"] = ""
+        else:
+            lang = self._LANG_ALIASES.get(
+                language.split("-")[0].lower(), language.split("-")[0].lower()
+            )
+            args["hl"] = lang
+            args["lr"] = f"lang_{lang}"
+            parts = language.split("-")
+            if len(parts) > 1 and parts[1].isalpha() and len(parts[1]) == 2:
+                args["cr"] = f"country{parts[1].upper()}"
+
+        start = (pageno - 1) * 10
+        if start:
+            args["start"] = start
+        if time_range and time_range in self._TIME_RANGE_MAP:
+            args["tbs"] = "qdr:" + self._TIME_RANGE_MAP[time_range]
         if safesearch:
-            params["safe"] = self._SAFE_MAP.get(safesearch, "medium")
-        if time_range:
-            tr_map = {"day": "d", "week": "w", "month": "m", "year": "y"}
-            params["tbs"] = f"qdr:{tr_map.get(time_range, 'w')}"
+            args["safe"] = self._FILTER_MAP.get(safesearch, "medium")
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://www.google.com/",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
+            "User-Agent": random.choice(self.nokia_useragents),
+            "Accept": "*/*",
         }
+        cookies = {"CONSENT": "YES+"}
 
-        url = f"https://www.google.com/search?{urlencode(params)}"
-        try:
-            resp = await client.get(
-                url, headers=headers, follow_redirects=True, timeout=self.timeout
-            )
-            resp.raise_for_status()
-        except Exception as exc:
-            logger.warning("Google search failed for %r: %s", query, exc)
-            raise
+        url = f"https://www.google.com/wml/search?{urlencode(args)}"
+        resp = await client.get(
+            url,
+            headers=headers,
+            cookies=cookies,
+            follow_redirects=True,
+            timeout=self.timeout,
+        )
+        if resp.url.host == "sorry.google.com" or resp.url.path.startswith("/sorry"):
+            raise EngineBlockedError("Google sorry page")
+        resp.raise_for_status()
+        if len(resp.text) < 2000 and "/sorry/" in resp.text:
+            raise EngineBlockedError("Google sorry redirect page")
 
         return self._parse_results(resp.text)
 
+    @staticmethod
+    def _unwrap_url(raw_url: str) -> str:
+        if raw_url.startswith("/url?q="):
+            return unquote(raw_url[7:].split("&sa=U")[0])
+        return raw_url
+
     def _parse_results(self, html_text: str) -> list[SearchResult]:
         results: list[SearchResult] = []
+        text = html_text
+        if text.lstrip().startswith("<?xml"):
+            text = text.split("?>", 1)[-1]
         try:
-            doc = _lh.fromstring(html_text)
+            doc = _lh.fromstring(text)
         except Exception:
             return results
 
-        # Remove scripts/styles for cleaner extraction
-        for tag in doc.xpath("//script | //style"):
-            tag.getparent().remove(tag)
-
-        # Google search result containers
-        # Only direct children of #search are organic results — this avoids
-        # matching ads, knowledge panels, "people also ask" blocks, etc.
-        for result_div in doc.xpath('//div[@id="search"]/div[contains(@class, "g")]'):
-            link_els = result_div.xpath(
-                './/a[not(contains(@href, "google")) and @href]'
+        for result in doc.xpath('//div[contains(@class, "zMzFAb")]'):
+            titles = result.xpath(
+                './/a[contains(@class, "fuLhoc")]//span[contains(@class, "CVA68e")]'
             )
-            if not link_els:
+            if not titles:
                 continue
-            link = link_els[0]
-            href = link.get("href", "")
-
-            # Clean Google redirect URLs
-            if href.startswith("/url?q="):
-                href = unquote(href[7:].split("&sa=U")[0])
-
-            if not href.startswith("http"):
+            hrefs = result.xpath('.//a[contains(@class, "fuLhoc")]/@href')
+            if not hrefs:
                 continue
-
-            title = "".join(link.itertext()).strip()
-            if not title:
+            title = "".join(titles[0].itertext()).strip()
+            url = self._unwrap_url(hrefs[0])
+            if not url.startswith("http"):
                 continue
-
-            # Extract snippet / description
-            snippet_divs = result_div.xpath(
-                './/div[contains(@class, "VwiC3b") or contains(@class, "st") or contains(@class, "BNeawe")]'
+            contents = result.xpath(
+                './/div[contains(@class, "taTFJ")]//span[contains(@class, "FrIlee")]'
             )
-            snippet = ""
-            for sd in snippet_divs:
-                text = "".join(sd.itertext()).strip()
-                if text and len(text) > len(snippet):
-                    snippet = text
-
+            snippet = "".join(contents[0].itertext()).strip() if contents else ""
             results.append(
                 SearchResult(
-                    title=title, url=href, snippet=snippet or None, engine=self.name
+                    title=title, url=url, snippet=snippet or None, engine=self.name
                 )
             )
-
         return results
 
 
 # ---------------------------------------------------------------------------
-# Mojeek HTML scraping provider
+# Mojeek (port of searx/engines/mojeek.py, general search)
 # ---------------------------------------------------------------------------
 
 
 class MojeekProvider(EngineProvider):
-    """Mojeek HTML search (no API key required).
-
-    Scrapes ``https://www.mojeek.com/search`` which accepts queries without
-    any API key or registration.  Based on the SearXNG mojeek engine.
-
-    .. warning::
-       Mojeek may occasionally show a CAPTCHA for automated requests.
-       This provider is best-effort.
-    """
+    """Mojeek HTML search (general, no API key required)."""
 
     name = "mojeek"
     timeout = 20.0
     retries = 2
 
     _BASE = "https://www.mojeek.com"
-    _TIME_RANGE_MAP: dict[str, str] = {
-        "day": "days",
-        "week": "weeks",
-        "month": "months",
-        "year": "years",
-    }
+    _TIME_RANGE_DELTA = {"day": 1, "week": 7, "month": 30, "year": 365}
 
     async def search(
         self,
@@ -596,43 +658,40 @@ class MojeekProvider(EngineProvider):
         time_range: str | None = None,
         pageno: int = 1,
     ) -> list[SearchResult]:
-        params: dict[str, t.Any] = {
+        args: dict[str, t.Any] = {
             "q": query,
             "safe": min(safesearch, 1),
         }
 
-        # Setting s=0 on the first page triggers a rate-limit
+        # Setting the page number on the first page (s=0) triggers a rate-limit.
         if pageno > 1:
-            params["s"] = 10 * (pageno - 1)
+            args["s"] = 10 * (pageno - 1)
 
-        if time_range:
-            unit = self._TIME_RANGE_MAP.get(time_range)
-            if unit:
-                today = time.strftime("%Y%m%d")
-                ago = _date_offset(today, units=1, unit_type=unit)
-                params["since"] = ago
+        if time_range and time_range in self._TIME_RANGE_DELTA:
+            args["since"] = _date_offset(self._TIME_RANGE_DELTA[time_range])
+
+        # Cookie values mirror what upstream fills from Mojeek's preferences:
+        # lb = language filter ("" = all), arc = region ("" = auto-detect,
+        # "none" = no location bias).
+        lang = "" if language == "all" else language.split("-")[0].lower()
+        region = "none" if language == "all" else ""
+        parts = language.split("-")
+        if len(parts) > 1 and parts[1].isalpha() and len(parts[1]) == 2:
+            region = parts[1].lower()
+        cookies = {"lb": lang, "arc": region}
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "User-Agent": _HTTP_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://www.mojeek.com/",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "same-origin",
+            "Referer": f"{self._BASE}/",
         }
-        # Same cookies the SearXNG Mojeek engine sends — empty lb = "all languages",
-        # arc="none" = no region filter.  Without these Mojeek is more likely to
-        # challenge automated clients.
-        cookies = {"lb": "" if language == "all" else language, "arc": "none"}
-        headers["Cookie"] = "; ".join(
-            f"{key}={value}" for key, value in cookies.items()
-        )
 
-        url = f"{self._BASE}/search?{urlencode(params)}"
+        url = f"{self._BASE}/search?{urlencode(args)}"
         resp = await client.get(
             url,
             headers=headers,
+            cookies=cookies,
             follow_redirects=True,
             timeout=self.timeout,
         )
@@ -643,24 +702,15 @@ class MojeekProvider(EngineProvider):
                 "Mojeek returned a CAPTCHA challenge instead of results"
             )
 
-        results = self._parse_results(resp.text)
-        if not results and '<ul class="results-standard">' in resp.text:
-            # Page structure exists but parser found nothing — layout may have changed.
-            logger.warning(
-                "Mojeek results container present but no results parsed for query: %s",
-                query,
-            )
-        return results
+        return self._parse_results(resp.text)
 
     @staticmethod
     def _is_captcha(html_text: str) -> bool:
-        """Detect if Mojeek returned a CAPTCHA / challenge page.
-
-        Keyword heuristics only apply when the results container is absent,
-        so ordinary result pages that merely mention "captcha"/"verify"
-        are not misclassified.
-        """
+        """Heuristics apply only when the results container is absent, so
+        ordinary result pages mentioning "captcha" are not misclassified."""
         if 'id="challenge-form"' in html_text:
+            return True
+        if 'class="captcha-wrap"' in html_text:
             return True
         if '<ul class="results-standard">' in html_text:
             return False
@@ -676,22 +726,18 @@ class MojeekProvider(EngineProvider):
         except Exception:
             return results
 
-        # XPaths from the SearXNG Mojeek engine
         for result_elem in doc.xpath(
             '//ul[@class="results-standard"]/li/a[@class="ob"]'
         ):
-            # URL: ./@href
             url = "".join(result_elem.xpath("./@href")).strip()
             if not url:
                 continue
             if url.startswith("/"):
                 url = self._BASE + url
 
-            # Title: ../h2/a
             title_els = result_elem.xpath("../h2/a")
             title = "".join(title_els[0].itertext()).strip() if title_els else ""
 
-            # Snippet: ..//p[@class="s"] — go up to <li> and find <p class="s">
             snippet_els = result_elem.xpath('..//p[@class="s"]')
             snippet = "".join(snippet_els[0].itertext()).strip() if snippet_els else ""
 
@@ -707,12 +753,25 @@ class MojeekProvider(EngineProvider):
         return results
 
 
-class WikipediaProvider(EngineProvider):
-    """Wikipedia search via the MediaWiki Action API."""
+# ---------------------------------------------------------------------------
+# Bing (port of searx/engines/bing.py, web search)
+# ---------------------------------------------------------------------------
 
-    name = "wikipedia"
-    timeout = 10.0
-    retries = 1
+
+class BingProvider(EngineProvider):
+    """Bing WEB search.
+
+    Upstream supports neither paging nor time ranges for the web category
+    (both depend on JavaScript); the provider therefore only serves the
+    first result page.
+    """
+
+    name = "bing"
+    timeout = 15.0
+    retries = 2
+
+    _BASE = "https://www.bing.com"
+    _SAFE_MAP = {0: "off", 1: "moderate", 2: "strict"}
 
     async def search(
         self,
@@ -723,27 +782,268 @@ class WikipediaProvider(EngineProvider):
         time_range: str | None = None,
         pageno: int = 1,
     ) -> list[SearchResult]:
-        wiki_language = language.split("-")[0].lower()
-        if language == "all" or not wiki_language.isalpha() or len(wiki_language) > 3:
+        if pageno > 1:
+            return []
+
+        params: dict[str, t.Any] = {
+            "q": query,
+            "adlt": self._SAFE_MAP.get(safesearch, "off"),
+        }
+
+        headers = {
+            "User-Agent": _HTTP_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
+
+        # Bing market codes are full <language>-<country> tags; the mkt
+        # parameter is the recommended primary locale signal.
+        norm = language.replace("_", "-")
+        m = re.fullmatch(r"([a-z]{2,3})-([A-Za-z]{2})", norm)
+        if m:
+            market = f"{m.group(1)}-{m.group(2).upper()}"
+            params["mkt"] = market
+            headers["Accept-Language"] = f"{market},{market.split('-')[0]};q=0.9"
+
+        url = f"{self._BASE}/search?{urlencode(params)}"
+        resp = await client.get(
+            url,
+            headers=headers,
+            follow_redirects=True,
+            timeout=self.timeout,
+        )
+        resp.raise_for_status()
+
+        return self._parse_results(resp.text)
+
+    @staticmethod
+    def _unwrap_url(href: str) -> str:
+        """Decode Bing's ``/ck/a?...&u=a1<base64url>`` tracking redirects."""
+        qs = parse_qs(urlparse(href).query)
+        u_values = qs.get("u")
+        if u_values and u_values[0].startswith("a1"):
+            encoded = u_values[0][2:]
+            encoded += "=" * (-len(encoded) % 4)
+            return base64.urlsafe_b64decode(encoded).decode("utf-8", errors="replace")
+        return href
+
+    def _parse_results(self, html_text: str) -> list[SearchResult]:
+        results: list[SearchResult] = []
+        try:
+            doc = _lh.fromstring(html_text)
+        except Exception:
+            return results
+
+        for item in doc.xpath('//ol[@id="b_results"]/li[contains(@class, "b_algo")]'):
+            links = item.xpath(".//h2/a")
+            if not links:
+                continue
+            href = links[0].get("href", "")
+            title = "".join(links[0].itertext()).strip()
+            if not href or not title:
+                continue
+            if href.startswith("https://www.bing.com/ck/a?"):
+                href = self._unwrap_url(href)
+
+            # remove decorative icons Bing injects into <p> elements
+            content_parts: list[str] = []
+            for p in item.xpath(".//p"):
+                for icon in p.xpath('.//span[@class="algoSlug_icon"]'):
+                    icon.getparent().remove(icon)
+                content_parts.append(" ".join(p.itertext()).strip())
+            snippet = " ".join(part for part in content_parts if part)
+
+            results.append(
+                SearchResult(
+                    title=title, url=href, snippet=snippet or None, engine=self.name
+                )
+            )
+
+        return results
+
+
+# ---------------------------------------------------------------------------
+# Brave (port of searx/engines/brave.py, search category)
+# ---------------------------------------------------------------------------
+
+
+class BraveProvider(EngineProvider):
+    """Brave search (web category, server-rendered HTML)."""
+
+    name = "brave"
+    timeout = 15.0
+    retries = 2
+
+    _BASE = "https://search.brave.com"
+    _TIME_RANGE_MAP: dict[str, str] = {
+        "day": "pd",
+        "week": "pw",
+        "month": "pm",
+        "year": "py",
+    }
+    _SAFE_MAP = {0: "off", 1: "moderate", 2: "strict"}
+    _UI_LANGS = {
+        "ca",
+        "de-de",
+        "en-ca",
+        "en-gb",
+        "en-us",
+        "es",
+        "fr-ca",
+        "fr-fr",
+        "ja-jp",
+        "pt-br",
+        "sq-al",
+    }
+
+    async def search(
+        self,
+        client: httpx.AsyncClient,
+        query: str,
+        language: str = "all",
+        safesearch: int = 0,
+        time_range: str | None = None,
+        pageno: int = 1,
+    ) -> list[SearchResult]:
+        args: dict[str, t.Any] = {
+            "q": query,
+            "source": "web",
+        }
+        if pageno > 1:
+            args["offset"] = pageno - 1
+        if time_range and time_range in self._TIME_RANGE_MAP:
+            args["tf"] = self._TIME_RANGE_MAP[time_range]
+
+        # Region/language selection happens via cookies: country from the
+        # region part of the locale, ui_lang from Brave's small UI language
+        # set (defaults to en-us).
+        parts = language.split("-")
+        if (
+            language != "all"
+            and len(parts) > 1
+            and parts[-1].isalpha()
+            and len(parts[-1]) == 2
+        ):
+            country = parts[-1].lower()
+        else:
+            country = "all"
+        ui_lang = language.replace("_", "-").lower()
+        if ui_lang not in self._UI_LANGS:
+            ui_lang = "en-us"
+
+        headers = {
+            "User-Agent": _HTTP_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Encoding": "gzip, deflate",
+        }
+        cookies = {
+            "safesearch": self._SAFE_MAP.get(safesearch, "off"),
+            "useLocation": "0",
+            "summarizer": "0",
+            "country": country,
+            "ui_lang": ui_lang,
+        }
+
+        url = f"{self._BASE}/search?{urlencode(args)}"
+        resp = await client.get(
+            url,
+            headers=headers,
+            cookies=cookies,
+            follow_redirects=True,
+            timeout=self.timeout,
+        )
+        resp.raise_for_status()
+
+        return self._parse_results(resp.text)
+
+    def _parse_results(self, html_text: str) -> list[SearchResult]:
+        results: list[SearchResult] = []
+        try:
+            doc = _lh.fromstring(html_text)
+        except Exception:
+            return results
+
+        for result in doc.xpath("//div[contains(@class, 'snippet ')]"):
+            hrefs = result.xpath(".//a/@href")
+            titles = result.xpath(".//div[contains(@class, 'title')]")
+            if not hrefs or not titles:
+                continue
+            url = hrefs[0]
+            # partial url likely means it's an ad
+            if not urlparse(url).netloc:
+                continue
+            title = "".join(titles[0].itertext()).strip()
+            if not title:
+                continue
+
+            snippet = ""
+            contents = result.xpath(
+                ".//div[contains(concat(' ', @class, ' '), ' content ')]"
+            )
+            if contents:
+                snippet = " ".join(contents[0].itertext()).strip()
+                pub_spans = contents[0].xpath(
+                    ".//span[contains(@class, 't-secondary')]"
+                )
+                if pub_spans:
+                    pub_date = " ".join(pub_spans[0].itertext()).strip()
+                    if pub_date and snippet.startswith(pub_date):
+                        snippet = snippet[len(pub_date) :].strip("- \n\t")
+
+            results.append(
+                SearchResult(
+                    title=title, url=url, snippet=snippet or None, engine=self.name
+                )
+            )
+
+        return results
+
+
+# ---------------------------------------------------------------------------
+# Wikipedia (port of searx/engines/mediawiki.py against wikipedia.org)
+# ---------------------------------------------------------------------------
+
+
+class WikipediaProvider(EngineProvider):
+    """Wikipedia fulltext search via the MediaWiki Action API."""
+
+    name = "wikipedia"
+    timeout = 10.0
+    retries = 1
+
+    page_size = 5
+
+    async def search(
+        self,
+        client: httpx.AsyncClient,
+        query: str,
+        language: str = "all",
+        safesearch: int = 0,
+        time_range: str | None = None,
+        pageno: int = 1,
+    ) -> list[SearchResult]:
+        wiki_language = "en" if language == "all" else language.split("-")[0].lower()
+        if not wiki_language.isalpha() or len(wiki_language) > 3:
             wiki_language = "en"
-        params = {
+
+        args = {
             "action": "query",
             "list": "search",
-            "srsearch": query,
-            "srlimit": 10,
-            "sroffset": (pageno - 1) * 10,
-            "srnamespace": 0,
-            "srprop": "snippet",
             "format": "json",
-            "formatversion": 2,
+            "srsearch": query,
+            "sroffset": (pageno - 1) * self.page_size,
+            "srlimit": self.page_size,
+            "srwhat": "text",
+            "srprop": "sectiontitle|snippet|timestamp|categorysnippet",
+            "srsort": "relevance",
+            "srenablerewrites": "1",
         }
         headers = {
             "Accept": "application/json",
-            "User-Agent": "searchapi/0.3.0 (SearXNG-style metasearch API)",
+            "User-Agent": searxng_useragent(),
         }
         resp = await client.get(
             f"https://{wiki_language}.wikipedia.org/w/api.php",
-            params=params,
+            params=args,
             headers=headers,
             timeout=self.timeout,
         )
@@ -762,6 +1062,8 @@ class WikipediaProvider(EngineProvider):
         for item in items:
             if not isinstance(item, dict):
                 continue
+            if (item.get("snippet") or "").startswith("#REDIRECT"):
+                continue
             title = item.get("title")
             if not isinstance(title, str) or not title:
                 continue
@@ -773,12 +1075,18 @@ class WikipediaProvider(EngineProvider):
                     pass
             else:
                 snippet = None
+
+            url = f"https://{wiki_language}.wikipedia.org/wiki/" + quote(
+                title.replace(" ", "_")
+            )
+            sectiontitle = item.get("sectiontitle")
+            if sectiontitle:
+                url += "#" + quote(sectiontitle.replace(" ", "_"))
+                title += f" / {sectiontitle}"
+
             results.append(
                 SearchResult(
-                    title=title,
-                    url=f"https://{wiki_language}.wikipedia.org/wiki/{title.replace(' ', '_')}",
-                    snippet=snippet or None,
-                    engine=self.name,
+                    title=title, url=url, snippet=snippet or None, engine=self.name
                 )
             )
         return results
@@ -864,7 +1172,7 @@ class SearchService:
             )
             cached = self._cache.get(ckey)
             if cached is not None:
-                return cached  # type: ignore
+                return cached
 
         selected = (
             [e for e in self.engines if e.name in set(engines)]
@@ -1011,6 +1319,8 @@ def _default_providers() -> list[EngineProvider]:
         WikipediaProvider(),
         MojeekProvider(),
         GoogleProvider(),
+        BingProvider(),
+        BraveProvider(),
     ]
 
 

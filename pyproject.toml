@@ -9,13 +9,9 @@ dependencies = [
   "fastapi[standard]>=0.121.3",
   "fastapi-cloud>=0.0.1",
   "fastapi-mcp>=0.4.0",
-  "asyncio>=4.0.0",
-  "fake-useragent>=2.2.0",
   "habanero>=2.3.0",
-  "typing>=3.10.0.0",
   "httpx>=0.27.0",
   "lxml>=6.1.1",
-  "fixit>=2.2.1",
   "pyrefly>=1.1.1",
 ]
 
@@ -28,16 +24,10 @@ py-modules = ["main"]
 packages = { find = { where = ["."], include = ["src*"] } }
 include-package-data = true
 
-[tool.setuptools.package-data]
-"src.searx.data" = ["*.json"]
-
 [tool.pyrefly]
 project-includes = [
     "**/*.py*",
     "**/*.ipynb",
-]
-project-excludes = [
-    "src/searx/**",
 ]
 
 [dependency-groups]
